@@ -293,7 +293,14 @@ function parsePace(value){
   const m=s.match(/^(\d{1,3})[:.](\d{1,2})$/);if(!m)return null;
   const min=Number(m[1]),sec=Number(m[2]);if(sec>59)return null;const total=min*60+sec;return total>0&&total<=3600?total:null;
 }
-function normalizePaceInput(input){const digits=String(input.value||'').replace(/[^\d]/g,'').slice(0,4);input.value=digits.length<=2?digits:digits.slice(0,-2)+':'+digits.slice(-2)}
+function normalizePaceInput(input){
+  const raw=String(input.value||'').trim();
+  // 사용자가 08:00을 직접 수정할 때 중간 입력(예: 08:0)이 깨지지 않도록
+  // 콜론/점이 이미 들어간 값은 그대로 두고, 숫자 4자리일 때만 자동 변환합니다.
+  if(/[.:]/.test(raw)){input.value=raw.replace(/[^\d:.-]/g,'').slice(0,6);return}
+  const digits=raw.replace(/[^\d]/g,'').slice(0,4);
+  input.value=digits.length===4?digits.slice(0,-2)+':'+digits.slice(-2):digits;
+}
 function formatPaceInput(sec){const min=Math.floor(sec/60),s=Math.round(sec%60);return `${String(min).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
 function paceText(sec){return sec?formatPaceInput(sec)+'/km':'-'}
 function paceToSpeed(sec){return sec?3600/sec:null}
@@ -357,7 +364,21 @@ function renderSessionRow(r,i){
 }
 function selectedOptions(html,value){const safe=String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return html.replace(/\sselected\b/g,'').replace(new RegExp(`value="${safe}"`),`value="${value}" selected`);}
 function getDraft(id){return draftRows.find(r=>r.rowId===id)}
-function updateDraftFromEvent(target){const id=target.dataset.row,field=target.dataset.field,r=getDraft(id);if(!r)return; r[field]=target.value;if(field==='pace'||field==='fastPace'||field==='recoveryPace')normalizePaceInput(target);if(field==='recoveryPreset'){const row=target.closest('.session-row');const rec=row?.querySelector(`[data-field="recoveryPace"][data-row="${id}"]`);if(rec)rec.disabled=target.value==='auto'}updateRowPreview(r);updateSessionSummary()}
+function updateDraftFromEvent(target){
+  const id=target.dataset.row,field=target.dataset.field,r=getDraft(id);
+  if(!r)return;
+  // 화면에 보이는 값과 내부 draft 값을 항상 동일하게 유지합니다.
+  // 특히 페이스는 0800 -> 08:00으로 정규화한 뒤 저장해야 합니다.
+  if(field==='pace'||field==='fastPace'||field==='recoveryPace') normalizePaceInput(target);
+  r[field]=target.value;
+  if(field==='recoveryPreset'){
+    const row=target.closest('.session-row');
+    const rec=row?.querySelector(`[data-field="recoveryPace"][data-row="${id}"]`);
+    if(rec) rec.disabled=target.value==='auto';
+  }
+  updateRowPreview(r);
+  updateSessionSummary();
+}
 function estimateDraft(r){
   const mode=activityMeta[r.activity]?.mode;
   if(mode==='pace'){
