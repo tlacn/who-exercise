@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WHO 운동 기록 + 수면 호흡</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#687386;--line:#e5e9f0;--accent:#2563eb;--accent-soft:#eff6ff;--good:#16a34a;--bad:#dc2626;--shadow:0 8px 30px rgba(20,30,50,.07);--radius:20px}
+*{box-sizing:border-box}html,body{margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:900px;margin:0 auto;padding:28px 16px 48px}h1{font-size:28px;margin:0 0 6px;letter-spacing:-.5px}.sub{color:var(--muted);font-size:14px;margin-bottom:22px;line-height:1.55}.grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}.card h2{font-size:16px;margin:0 0 16px}.hero{display:flex;align-items:center;justify-content:space-between;gap:18px}.score{display:flex;align-items:end;gap:7px}.score .num{font-size:52px;line-height:.9;font-weight:800;letter-spacing:-2px}.score .unit{color:var(--muted);font-size:14px;padding-bottom:5px}.status{font-weight:800;font-size:18px}.status.good{color:var(--good)}.status.no{color:var(--bad)}
+.bar{height:12px;background:#edf0f5;border-radius:999px;overflow:hidden;margin:16px 0 10px}.fill{height:100%;background:var(--accent);border-radius:999px;transition:width .25s}.legend{font-size:13px;color:var(--muted);display:flex;justify-content:space-between}.mini{font-size:13px;color:var(--muted);line-height:1.5}.targets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.target{border:1px solid var(--line);border-radius:14px;padding:13px}.target b{display:block;font-size:20px;margin-top:3px}.target span{font-size:12px;color:var(--muted)}
+.exercise-form{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;align-items:start}.field{min-width:0}.field-action{display:flex;align-items:flex-end}.field-action button{width:100%}label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px;line-height:1.3}input,select{display:block;width:100%;height:44px;padding:0 12px;border-radius:12px;border:1px solid #d9dee8;background:#fff;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s,background .15s}input::placeholder{color:#a3acbb}input:hover,select:hover{border-color:#bfc7d6}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.pace-box{width:100%}.pace-row{display:flex;align-items:center;gap:8px;height:44px}.pace-row input{flex:1;min-width:0;font-variant-numeric:tabular-nums;letter-spacing:.02em}.pace-unit{font-size:13px;color:var(--muted);white-space:nowrap}.pace-meta{min-height:18px;display:flex;align-items:center;gap:8px;margin-top:6px}.pace-helper{font-size:11px;color:var(--muted);line-height:1.45}.typing-indicator{display:none;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:10px;font-weight:800;white-space:nowrap}.typing-indicator.show{display:inline-flex}.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(37,99,235,.4);animation:pulse 1.2s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.35)}70%{box-shadow:0 0 0 5px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}
+.input-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}.result{margin-top:13px;padding:12px 13px;border-radius:13px;background:#f7f9fc;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.result .big{font-weight:800;line-height:1.45}.badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}.badge.mod{background:#eff6ff;color:#1d4ed8}.badge.vig{background:#f5f3ff;color:#6d28d9}.badge.light{background:#f1f5f9;color:#64748b}.badge.uncertain{background:#fff7ed;color:#c2410c}.help{font-size:11px;color:var(--muted);line-height:1.55;margin-top:8px}.interval-box{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfcfe}.interval-box.show{display:block}.interval-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.interval-title{font-size:12px;font-weight:800;margin:0 0 10px}.interval-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}.compact{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.footer{margin-top:18px;color:var(--muted);font-size:11px;line-height:1.6}button{min-height:44px;border-radius:12px;border:0;padding:0 15px;font-weight:700;cursor:pointer;background:var(--text);color:#fff}.secondary{background:#eef2f7;color:var(--text)}.danger{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}
+.week{margin-top:16px}.days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.day{border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center;background:#fbfcfe}.day .d{font-size:11px;color:var(--muted)}.day .m{font-size:18px;font-weight:800;margin-top:5px}.day.active{border-color:#9bb8ff;background:#f4f7ff}.day.today{outline:2px solid #d6e2ff}.day .dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1;margin:7px auto 0}.day.done .dot{background:var(--good)}.list{margin-top:16px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}.left{min-width:0}.date{font-weight:700;font-size:14px}.type{font-size:12px;color:var(--muted);margin-top:4px}.mins{font-weight:800;white-space:nowrap}.tiny{font-size:11px;color:var(--muted)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.stat{border:1px solid var(--line);border-radius:14px;padding:12px}.stat .label{font-size:11px;color:var(--muted)}.stat .value{font-weight:800;font-size:18px;margin-top:3px}.note{padding:11px 12px;border-radius:12px;background:#f8fafc;border:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.55;margin-top:12px}.empty{padding:22px 0;color:var(--muted);text-align:center}
+.sleep-card{margin-top:16px;background:var(--card);color:var(--text)}.sleep-card h2{color:var(--text)}.sleep-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.sleep-kicker{font-size:11px;color:var(--muted);font-weight:700}.sleep-mode-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.sleep-card .mode-btn{height:44px;width:100%;padding:0 12px;font-size:.88rem;font-weight:800;background:#f7f9fc;color:var(--muted);border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:.15s}.sleep-card .mode-btn:hover{border-color:#bfc7d6}.sleep-card .mode-btn.active{background:var(--accent-soft);color:var(--accent);border-color:#9bb8ff;box-shadow:0 0 0 2px rgba(37,99,235,.06)}.sleep-progress{font-size:12px;font-weight:800;color:var(--muted);text-align:center;margin-bottom:12px}.sleep-control-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}.sleep-card .control-btn{height:44px;padding:0 12px;font-size:.9rem;font-weight:800;border-radius:12px;border:1px solid transparent;cursor:pointer}.sleep-card .start-btn{background:var(--accent);color:#fff}.sleep-card .pause-btn{background:#f59e0b;color:#fff}.sleep-card .reset-btn{background:#eef2f7;color:var(--text);border-color:var(--line)}.circle-shell{width:186px;height:186px;margin:0 auto 18px;padding:12px;border-radius:50%;background:#f8faff;border:1px solid #dbe5ff;display:flex;align-items:center;justify-content:center}.circle-container{position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center}.breath-circle{width:100%;height:100%;background:radial-gradient(circle,rgba(37,99,235,.12) 0%,rgba(37,99,235,.03) 48%,rgba(37,99,235,0) 72%);border:4px solid #7da1f8;border-radius:50%;position:absolute;box-sizing:border-box;transform:scale(1);box-shadow:0 0 0 8px rgba(37,99,235,.04)}.status-text{position:relative;z-index:10;font-size:1.18rem;font-weight:800;text-align:center;color:var(--text)}.timer-text{font-size:2rem;font-weight:800;color:var(--accent);margin-top:4px;font-variant-numeric:tabular-nums}.sleep-instruction-box{padding:12px 13px;border:1px solid var(--line);border-radius:13px;background:#f7f9fc}.instruction{font-size:.86rem;color:var(--muted);text-align:center;min-height:2.7rem;line-height:1.5}.sleep-sub{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px;text-align:center}
+@media(max-width:650px){.exercise-form{grid-template-columns:1fr}.field-action{align-items:stretch}.compact,.interval-grid{grid-template-columns:1fr}.days{gap:5px}.day{padding:9px 3px}.row{align-items:flex-start}.mins{font-size:13px}.sleep-mode-wrap{grid-template-columns:1fr}.circle-shell{width:176px;height:176px}.circle-container{width:152px;height:152px}}@media(max-width:420px){.wrap{padding-left:12px;padding-right:12px}.card{padding:16px}.targets{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>WHO 운동 기록</h1>
+<div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 넣으면 속도(km/h)로 자동 변환하고, 운동 종류에 맞춰 중강도·고강도를 대략 추정합니다.</div>
+<div class="grid">
+<section class="card">
+<div class="hero"><div><div class="tiny">이번 주 환산 운동량</div><div class="score"><div class="num" id="score">0</div><div class="unit">분</div></div></div><div style="text-align:right"><div class="status no" id="status">미달성</div><div class="tiny" id="remain">150분 남음</div></div></div>
+<div class="bar"><div class="fill" id="fill" style="width:0%"></div></div>
+<div class="legend"><span>최소 기준 150분</span><span id="progressText">0%</span></div>
+<div class="targets"><div class="target"><span>중강도만 할 경우</span><b>150–300분</b></div><div class="target"><span>고강도만 할 경우</span><b>75–150분</b></div></div>
+<div class="stats"><div class="stat"><div class="label">이번 주 중강도</div><div class="value" id="modTotal">0분</div></div><div class="stat"><div class="label">이번 주 고강도</div><div class="value" id="vigTotal">0분</div></div></div>
+<div class="mini" style="margin-top:12px">환산: 중강도 1분 = 1점 · 고강도 1분 = 2점</div>
+</section>
+
+<section class="card">
+<h2>운동 기록 추가</h2>
+<form id="form" class="exercise-form">
+<div class="field"><label for="date">날짜</label><input id="date" type="date" required></div>
+<div class="field"><label for="activity">운동 종류</label><select id="activity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="interval">인터벌</option></select></div>
+
+<div class="field pace-box" id="paceWrap">
+<label for="pace">페이스</label>
+<div class="pace-row"><input id="pace" type="text" inputmode="numeric" autocomplete="off" placeholder="08:00" maxlength="5" aria-label="페이스 분:초"><span class="pace-unit">/km</span></div>
+<div class="pace-meta"><span class="typing-indicator" id="paceTyping"><span class="typing-dot"></span>입력 중</span><span class="pace-helper">워치에 나온 페이스를 그대로 입력 · 예: 08:00</span></div>
+</div>
+
+<div class="field" id="detailWrap"></div>
+<div class="field" id="minutesWrap"><label for="minutes">시간(분)</label><input id="minutes" type="number" min="1" step="1" placeholder="30" required></div>
+<div class="field field-action"><button type="submit">추가</button></div>
+</form>
+
+<div class="interval-box" id="intervalBox">
+<div class="interval-title">인터벌 구성</div>
+<div class="compact" style="margin-bottom:10px"><div><label for="intervalBase">운동</label><select id="intervalBase"><option value="run">러닝</option><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="hiking">등산/오르막 걷기</option></select></div><div><label for="recoveryPreset">회복 구간</label><select id="recoveryPreset"><option value="auto">빠른 구간보다 느리게 자동 계산</option><option value="manual">직접 페이스 입력</option></select></div></div>
+<div class="interval-grid"><div><label for="fastMinutes">빠른 구간(분)</label><input id="fastMinutes" type="number" min="0" step="1" placeholder="10"></div><div><label for="fastPace">빠른 구간 페이스</label><input id="fastPace" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="08:00"><div class="pace-helper">워치 표시 그대로 · 예: 08:00/km</div></div><div><label for="recoveryMinutes">회복 구간(분)</label><input id="recoveryMinutes" type="number" min="0" step="1" placeholder="20"></div><div><label for="recoveryPace">회복 구간 페이스</label><input id="recoveryPace" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="10:00"><div class="pace-helper">자동이면 빠른 페이스보다 느린 기준으로 추정</div></div></div>
+<div class="interval-note">각 구간을 따로 판정합니다. 예: 10분 고강도 + 20분 중강도라면 각각 고강도/중강도로 기록되어 주간 환산량에 반영됩니다.</div>
+</div>
+
+<div class="result" id="estimateBox"><div><div class="tiny">자동 추정</div><div class="big" id="estimateText">페이스를 입력하세요</div></div><span class="badge uncertain" id="estimateBadge">대기</span></div>
+<div class="input-note">페이스는 <b>분:초 / km</b>로 입력합니다. 예: <b>08:00</b> → <b>7.5 km/h</b>.</div>
+<div class="help">강도는 활동 종류와 속도를 바탕으로 한 기록용 추정치입니다. 실제 강도는 경사·지면·체력·심박 등에 따라 달라질 수 있습니다.</div>
+<div class="actions"><button class="secondary" type="button" id="todayBtn">오늘 날짜</button><button class="secondary" type="button" id="exportBtn">백업</button><button class="danger" type="button" id="clearBtn">전체 삭제</button></div>
+<div class="footer">기록은 이 브라우저의 저장공간에 저장됩니다. 다른 기기와 자동 동기화되지는 않습니다.</div>
+</section></div>
+
+<section class="card week"><h2 id="weekTitle">이번 주</h2><div class="days" id="days"></div></section>
+<section class="card list"><h2>이번 주 기록</h2><div id="records"></div></section>
+<div class="note"><b>판정 기준:</b> WHO 성인(18–64세)은 주당 중강도 유산소 150–300분 또는 고강도 75–150분 또는 동등한 조합을 권고합니다. 이 페이지는 최소량 판정을 위해 고강도 1분을 중강도 2분으로 환산합니다.</div>
+<div class="footer">운동 강도 추정은 2024 Adult Compendium의 활동별 MET 자료를 참고합니다. 예를 들어 러닝은 페이스가 빨라질수록 MET가 상승하며, 4–4.2 mph(약 13분/mile) 러닝은 6.5 MET, 5.0–5.2 mph(12분/mile)는 8.5 MET로 제시됩니다.</div>
+
+<section class="card sleep-card">
+  <div class="sleep-header">
+    <div>
+      <h2 style="margin-bottom:4px">🧘 수면 유도 호흡기</h2>
+      <div class="sleep-kicker">호흡 리듬에 맞춰 원이 천천히 움직입니다.</div>
+    </div>
+  </div>
+
+  <div class="sleep-mode-wrap">
+    <button class="mode-btn active" id="btn-478" type="button">4-7-8 (4회)</button>
+    <button class="mode-btn" id="btn-box" type="button">박스 호흡 (5회)</button>
+  </div>
+
+  <div class="sleep-progress" id="sleepProgress">남은 횟수: 4회</div>
+
+  <div class="sleep-control-grid">
+    <button class="control-btn start-btn" id="main-control" type="button">START</button>
+    <button class="control-btn reset-btn" id="resetSleepBtn" type="button">RESET</button>
+  </div>
+
+  <div class="circle-shell">
+    <div class="circle-container">
+      <div class="breath-circle" id="circle"></div>
+      <div class="status-text">
+        <div id="sleepStatus">대기 중</div>
+        <div class="timer-text" id="sleepTimer">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sleep-instruction-box">
+    <div class="instruction" id="sleepInstruction">준비가 완료되면 START 버튼을 누르십시오.</div>
+  </div>
+
+  <div class="sleep-sub">4-7-8 / 박스 호흡 시퀀스와 타이머 구조를 사용합니다.</div>
+</section>
+</div>
+
+<script>
+const KEY='who-exercise-records-v3',OLD_KEY='who-exercise-records-v2';
+let records=[];
+try{records=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(records))records=[];}catch(e){records=[]}
+if(!records.length){try{const old=JSON.parse(localStorage.getItem(OLD_KEY)||'[]');if(Array.isArray(old)){records=old.map(r=>({...r,id:r.id??(Date.now()+Math.random()),activity:r.activity||'other'}));if(records.length)localStorage.setItem(KEY,JSON.stringify(records));}}catch(e){}}
+const $=id=>document.getElementById(id);
+function iso(d){return d.toISOString().slice(0,10)}
+function today(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function monday(d){const x=new Date(d),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function fmtDate(s){const [y,m,d]=s.split('-');return `${y}.${m}.${d}`}
+function weekData(){const start=monday(today());const days=Array.from({length:7},(_,i)=>iso(addDays(start,i)));return{start,days}}
+function save(){localStorage.setItem(KEY,JSON.stringify(records));render()}
+
+function parsePace(value){let s=String(value||'').trim().replace(/분/g,'').replace(/초/g,'').replace(/\s+/g,'');if(!s)return null;if(/^\d{3,4}$/.test(s)){const sec=Number(s.slice(-2)),min=Number(s.slice(0,-2));if(sec>59)return null;const total=min*60+sec;return total>0&&total<=3600?total:null}const m=s.match(/^(\d{1,3})[:.](\d{1,2})$/);if(!m)return null;const min=Number(m[1]),sec=Number(m[2]);if(sec>59)return null;const total=min*60+sec;return total>0&&total<=3600?total:null}
+function normalizePaceInput(input){if(!input)return;let v=input.value.replace(/\D/g,'').slice(0,4);if(v.length<=2)input.value=v;else input.value=v.slice(0,-2)+':'+v.slice(-2)}
+function formatPaceInput(sec){const min=Math.floor(sec/60),s=Math.round(sec%60);return String(min).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+function paceText(sec){return sec?formatPaceInput(sec)+'/km':'-'}
+function paceToSpeed(sec){return sec?3600/sec:null}
+function interpolate(points,speed){if(!speed)return null;if(speed<=points[0][0])return points[0][1];if(speed>=points[points.length-1][0])return points[points.length-1][1];for(let i=0;i<points.length-1;i++){const[x1,y1]=points[i],[x2,y2]=points[i+1];if(speed>=x1&&speed<=x2)return y1+(y2-y1)*(speed-x1)/(x2-x1)}return points[points.length-1][1]}
+const paceProfiles={powerwalk:{name:'파워워킹',points:[[4.5,3.5],[5.6,4.3],[6.4,5.0],[7.2,7.0],[8.0,8.0]]},walk:{name:'걷기',points:[[3.2,2.8],[4.0,3.0],[4.5,3.5],[5.6,4.3],[6.4,5.0],[7.2,7.0]]},run:{name:'러닝',points:[[6.44,6.5],[7.40,7.5],[7.72,7.8],[8.37,8.5],[9.02,9.0],[9.66,9.3],[10.78,10.5],[11.27,11.0],[12.07,11.8],[12.87,12.0],[13.84,12.5],[14.48,13.0]]},hiking:{name:'등산/오르막 걷기',points:[[3.5,3.0],[4.5,3.8],[5.6,5.3],[6.4,6.2],[7.2,7.2]]}};
+function classify(met){if(met>=6)return{key:'vigorous',label:'고강도',cls:'vig'};if(met>=3)return{key:'moderate',label:'중강도',cls:'mod'};return{key:'light',label:'저강도',cls:'light'}}
+function estimatePace(activity,raw){const sec=parsePace(raw);if(!sec)return null;const speed=paceToSpeed(sec),profile=paceProfiles[activity];if(!profile)return null;const met=interpolate(profile.points,speed);return{sec,speed,met,...classify(met)}}
+function getManualDetail(activity){if(activity==='stairs'){return{slow:{met:4,label:'계단오르기 · 느리게'},general:{met:8,label:'계단오르기 · 보통'},fast:{met:8.8,label:'계단오르기 · 빠르게'}}[$('stairsIntensity').value]}if(activity==='cycle'){return{easy:{met:4,label:'자전거 · 가볍게'},mod:{met:6.8,label:'자전거 · 중간'},hard:{met:9.3,label:'자전거 · 강하게'}}[$('cycleIntensity').value]}return null}
+
+function setupActivity(){const a=$('activity').value,isPace=['powerwalk','walk','run','hiking'].includes(a),isInterval=a==='interval';$('paceWrap').style.display=isPace?'block':'none';$('minutesWrap').style.display=isInterval?'none':'block';$('minutes').required=!isInterval;$('intervalBox').classList.toggle('show',isInterval);$('estimateBox').style.display=isInterval?'none':'flex';$('detailWrap').innerHTML='';if(isInterval)return;if(a==='stairs'){$('detailWrap').innerHTML='<label for="stairsIntensity">속도/강도</label><select id="stairsIntensity"><option value="slow">느리게 · 약 4.0 MET</option><option value="general">보통 · 약 8.0 MET</option><option value="fast">빠르게 · 약 8.8 MET</option></select>';$('stairsIntensity').addEventListener('change',updateEstimate)}else if(a==='cycle'){$('detailWrap').innerHTML='<label for="cycleIntensity">강도</label><select id="cycleIntensity"><option value="easy">가볍게 · 약 4.0 MET</option><option value="mod">중간 · 약 6.8 MET</option><option value="hard">강하게 · 약 9.3 MET</option></select>';$('cycleIntensity').addEventListener('change',updateEstimate)}updateEstimate()}
+function updateEstimate(){const a=$('activity').value;if(a==='interval')return updateIntervalPreview();if(['powerwalk','walk','run','hiking'].includes(a)){const e=estimatePace(a,$('pace').value);if(!e){$('estimateText').textContent='페이스를 입력하세요';$('estimateBadge').textContent='대기';$('estimateBadge').className='badge uncertain';return}$('estimateText').textContent=`${paceProfiles[a].name} · ${paceText(e.sec)} · ${e.speed.toFixed(1)} km/h · 약 ${e.met.toFixed(1)} MET`;$('estimateBadge').textContent=e.label;$('estimateBadge').className='badge '+e.cls;return}const d=getManualDetail(a);if(!d)return;const c=classify(d.met);$('estimateText').textContent=`${c.label} · 약 ${d.met.toFixed(1)} MET`;$('estimateBadge').textContent=c.label;$('estimateBadge').className='badge '+c.cls}
+function updateIntervalPreview(){const base=$('intervalBase').value,f=estimatePace(base,$('fastPace').value),auto=$('recoveryPreset').value==='auto';let r=null;if(f)r=estimatePace(base,auto?formatPaceInput(f.sec+120):$('recoveryPace').value);if(f){$('estimateText').textContent=`빠른 ${f.label} · ${paceText(f.sec)} · ${f.speed.toFixed(1)} km/h`+(r?` / 회복 ${r.label} · ${paceText(r.sec)} · ${r.speed.toFixed(1)} km/h`:'');$('estimateBadge').textContent=f.label;$('estimateBadge').className='badge '+f.cls}else{$('estimateText').textContent='빠른 구간 페이스를 입력하세요';$('estimateBadge').textContent='대기';$('estimateBadge').className='badge uncertain'}}
+function addRecord(obj){records.push({id:Date.now()+Math.random(),...obj});save()}
+function removeRecord(id){records=records.filter(r=>r.id!==id);save()}
+function render(){const{start,days}=weekData(),end=addDays(start,6);$('weekTitle').textContent=`이번 주 · ${start.getMonth()+1}/${start.getDate()}–${end.getMonth()+1}/${end.getDate()}`;const byDay={};days.forEach(d=>byDay[d]={moderate:0,vigorous:0});records.forEach(r=>{if(byDay[r.date]&&(r.intensity==='moderate'||r.intensity==='vigorous'))byDay[r.date][r.intensity]+=Number(r.minutes)||0});const mod=days.reduce((a,d)=>a+byDay[d].moderate,0),vig=days.reduce((a,d)=>a+byDay[d].vigorous,0),score=mod+vig*2;$('score').textContent=score;$('modTotal').textContent=mod+'분';$('vigTotal').textContent=vig+'분';const pct=Math.min(100,Math.round(score/150*100));$('fill').style.width=pct+'%';$('progressText').textContent=pct+'%';const good=score>=150;$('status').textContent=good?'달성':'미달성';$('status').className='status '+(good?'good':'no');$('remain').textContent=good?`최소 기준 달성 · ${score-150}분 초과`:`${150-score}분 남음`;$('days').innerHTML=days.map((d,i)=>{const raw=byDay[d].moderate+byDay[d].vigorous;return`<div class="day ${raw?'active ':''}${d===iso(today())?'today ':''}${raw?'done':''}"><div class="d">${['월','화','수','목','금','토','일'][i]}</div><div class="m">${raw}</div><div class="dot"></div></div>`}).join('');const wr=records.filter(r=>days.includes(r.date)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);$('records').innerHTML=wr.length?wr.map(r=>{const cls=r.intensity==='moderate'?'mod':r.intensity==='vigorous'?'vig':'light',lab=r.intensity==='moderate'?'중강도':r.intensity==='vigorous'?'고강도':'저강도',info=r.pace?` · ${r.pace} · ${Number(r.speedKmh||0).toFixed(1)} km/h`:r.met?` · 약 ${Number(r.met).toFixed(1)} MET`:'';return`<div class="row"><div class="left"><div class="date">${fmtDate(r.date)} · ${r.label||r.activity}</div><div class="type"><span class="badge ${cls}">${lab}</span>${info}${r.interval?` · ${r.segment||'인터벌'}`:''}</div></div><div class="mins">${r.minutes}분 <button class="secondary" type="button" style="height:32px;padding:0 9px;margin-left:8px" onclick="removeRecord(${r.id})">삭제</button></div></div>`}).join(''):'<div class="empty">아직 기록이 없습니다.</div>'}
+
+/* 일반 페이스 입력: 입력 중 상태를 즉시 표시 */
+$('pace').addEventListener('focus',()=>{$('paceTyping').classList.add('show');$('pace').classList.add('pace-active')});
+$('pace').addEventListener('blur',()=>{$('paceTyping').classList.remove('show');$('pace').classList.remove('pace-active')});
+$('pace').addEventListener('input',function(){normalizePaceInput(this);$('paceTyping').classList.add('show');updateEstimate()});
+$('fastPace').addEventListener('input',function(){normalizePaceInput(this);updateIntervalPreview()});
+$('recoveryPace').addEventListener('input',function(){normalizePaceInput(this);updateIntervalPreview()});
+$('activity').addEventListener('change',setupActivity);
+$('intervalBase').addEventListener('change',updateIntervalPreview);
+$('recoveryPreset').addEventListener('change',function(){$('recoveryPace').disabled=this.value==='auto';updateIntervalPreview()});
+$('fastMinutes').addEventListener('input',updateIntervalPreview);$('recoveryMinutes').addEventListener('input',updateIntervalPreview);
+
+$('form').addEventListener('submit',ev=>{ev.preventDefault();const date=$('date').value,a=$('activity').value;if(!date)return;if(a==='interval'){const base=$('intervalBase').value,fastMin=Number($('fastMinutes').value)||0,recMin=Number($('recoveryMinutes').value)||0,f=estimatePace(base,$('fastPace').value);let recoveryRaw=$('recoveryPace').value;if($('recoveryPreset').value==='auto'&&f)recoveryRaw=formatPaceInput(f.sec+120);const r=estimatePace(base,recoveryRaw);if(fastMin+recMin<1||(!f&&fastMin>0)||(!r&&recMin>0)){alert('인터벌의 페이스와 시간을 확인하세요.');return}if(f&&fastMin>0)addRecord({date,intensity:f.key,minutes:fastMin,met:f.met,label:`${paceProfiles[base].name} · 빠른 구간`,activity:'interval',interval:true,segment:'빠른 구간',pace:paceText(f.sec),speedKmh:f.speed});if(r&&recMin>0)addRecord({date,intensity:r.key,minutes:recMin,met:r.met,label:`${paceProfiles[base].name} · 회복 구간`,activity:'interval',interval:true,segment:'회복 구간',pace:paceText(r.sec),speedKmh:r.speed});$('fastMinutes').value='';$('recoveryMinutes').value='';$('fastPace').value='';$('recoveryPace').value='';render();updateIntervalPreview();return}const minutes=Number($('minutes').value);if(!minutes||minutes<1)return;let e,label,pace=null,speedKmh=null;if(['powerwalk','walk','run','hiking'].includes(a)){e=estimatePace(a,$('pace').value);if(!e){alert('페이스를 MM:SS 형식으로 입력하세요. 예: 08:00');$('pace').focus();return}pace=paceText(e.sec);speedKmh=e.speed;label=`${paceProfiles[a].name} · ${pace}`}else{const d=getManualDetail(a),c=classify(d.met);e={...c,met:d.met};label=d.label}addRecord({date,intensity:e.key,minutes,met:e.met,label,activity:a,pace,speedKmh});$('minutes').value='';render()});
+$('todayBtn').addEventListener('click',()=>$('date').value=iso(today()));$('clearBtn').addEventListener('click',()=>{if(confirm('저장된 운동 기록을 모두 삭제할까요?')){records=[];save()}});$('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='who-exercise-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$('date').value=iso(today());$('recoveryPace').disabled=true;setupActivity();render();
+
+/* 수면 호흡기 */
+const cycles={'478':{maxRounds:4,steps:[{state:'들이마시기',time:4,scale:1.3,info:'코로 천천히 깊게 숨을 들이마십니다.'},{state:'숨 참기',time:7,scale:1.3,info:'숨을 멈추고 온몸의 힘을 뺍니다.'},{state:'내쉬기',time:8,scale:1,info:'입으로 쉿- 소리를 내며 완전히 내뱉습니다.'}]},box:{maxRounds:5,steps:[{state:'들이마시기',time:4,scale:1.3,info:'4초 동안 일정한 속도로 숨을 채웁니다.'},{state:'숨 참기',time:4,scale:1.3,info:'공기를 채운 상태로 차분히 멈춥니다.'},{state:'내쉬기',time:4,scale:1,info:'4초 동안 부드럽게 숨을 빼냅니다.'},{state:'비우고 참기',time:4,scale:1,info:'숨을 완전히 비운 채로 멈춥니다.'}]}};
+let currentMode='478',currentStep=0,currentRound=1,timeLeft=0,intervalId=null,isPlaying=false;const sleepStatus=$('sleepStatus'),sleepTimer=$('sleepTimer'),sleepInstruction=$('sleepInstruction'),circle=$('circle'),mainControl=$('main-control'),sleepProgress=$('sleepProgress');
+function selectMode(mode){if(isPlaying){if(!confirm('모드를 변경하시겠습니까?'))return;pauseSequence()}currentMode=mode;currentStep=0;currentRound=1;timeLeft=0;$('btn-478').classList.toggle('active',mode==='478');$('btn-box').classList.toggle('active',mode==='box');resetSleepUI()}
+function togglePlay(){if(isPlaying){pauseSequence();return}if(sleepStatus.innerText==='종료'){currentStep=0;currentRound=1;timeLeft=0}isPlaying=true;mainControl.innerText='PAUSE';mainControl.className='control-btn pause-btn';if(timeLeft<=0)timeLeft=cycles[currentMode].steps[currentStep].time;runEngine()}
+function pauseSequence(){isPlaying=false;clearInterval(intervalId);intervalId=null;mainControl.innerText='START';mainControl.className='control-btn start-btn';sleepStatus.innerText='일시정지';const cs=window.getComputedStyle(circle);circle.style.transition='none';circle.style.transform=cs.getPropertyValue('transform')}
+function resetSequence(){pauseSequence();currentStep=0;currentRound=1;timeLeft=0;resetSleepUI()}
+function resetSleepUI(){sleepStatus.innerText='대기 중';sleepTimer.innerText='-';sleepProgress.innerText=`남은 횟수: ${cycles[currentMode].maxRounds}회`;sleepInstruction.innerText='준비가 완료되면 START 버튼을 누르십시오.';circle.style.transition='transform .5s ease';circle.style.transform='scale(1)'}
+function runEngine(){clearInterval(intervalId);const config=cycles[currentMode],step=config.steps[currentStep];sleepStatus.innerText=step.state;sleepTimer.innerText=timeLeft;sleepInstruction.innerText=step.info;sleepProgress.innerText=`진행: ${currentRound} / ${config.maxRounds}회`;circle.style.transition=`transform ${timeLeft}s linear`;circle.style.transform=`scale(${step.scale})`;intervalId=setInterval(()=>{timeLeft--;sleepTimer.innerText=Math.max(0,timeLeft);if(timeLeft<=0){clearInterval(intervalId);intervalId=null;if(currentStep===config.steps.length-1){if(currentRound>=config.maxRounds){endSequence();return}currentRound++}currentStep=(currentStep+1)%config.steps.length;timeLeft=config.steps[currentStep].time;if(isPlaying)runEngine()}},1000)}
+function endSequence(){isPlaying=false;clearInterval(intervalId);intervalId=null;mainControl.innerText='START';mainControl.className='control-btn start-btn';sleepStatus.innerText='종료';sleepTimer.innerText='💤';sleepProgress.innerText='시퀀스 완료';sleepInstruction.innerText='편안하게 주무십시오.';circle.style.transition='transform 1s ease';circle.style.transform='scale(1)'}
+$('btn-478').addEventListener('click',()=>selectMode('478'));$('btn-box').addEventListener('click',()=>selectMode('box'));$('main-control').addEventListener('click',togglePlay);$('resetSleepBtn').addEventListener('click',resetSequence);resetSleepUI();
+</script>
+</body>
+</html>
