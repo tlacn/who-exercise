@@ -214,11 +214,16 @@ input::placeholder,textarea::placeholder{color:#a3acbb}
 /* =========================================================
    저장 / 데이터
 ========================================================= */
-const KEY='who-exercise-records-v5';
-const OLD_KEYS=['who-exercise-records-v4','who-exercise-records-v3','who-exercise-records-v2'];
+const KEY='who-exercise-records-v6';
+const OLD_KEYS=['who-exercise-records-v5','who-exercise-records-v4','who-exercise-records-v3','who-exercise-records-v2'];
 const SETTINGS_KEY='who-exercise-settings-v2';
+const DB_NAME='who-exercise-db';
+const DB_VERSION=1;
+const RECORD_STORE='records';
+const SETTINGS_STORE='settings';
 let records=[];
 let settings={weeklyGoal:150};
+let db=null;
 
 const $=id=>document.getElementById(id);
 const paceBasedActivities=['powerwalk','walk','run','hiking'];
@@ -249,24 +254,61 @@ function normalizeRecord(r){
   if(x.activity==='interval' && !x.baseActivity) x.baseActivity='run';
   return x;
 }
-function loadData(){
-  try{
-    const parsed=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(Array.isArray(parsed)) records=parsed.map(normalizeRecord);
-  }catch(e){}
-  if(!records.length){
-    for(const oldKey of OLD_KEYS){
-      try{
-        const old=JSON.parse(localStorage.getItem(oldKey)||'null');
-        const arr=Array.isArray(old)?old:(old&&Array.isArray(old.records)?old.records:null);
-        if(arr&&arr.length){records=arr.map(normalizeRecord);localStorage.setItem(KEY,JSON.stringify(records));break}
-      }catch(e){}
-    }
-  }
-  try{const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');if(s&&typeof s==='object')settings={...settings,...s}}
-  catch(e){}
+function openDatabase(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)){reject(new Error('IndexedDB unavailable'));return}
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=e=>{
+      const database=e.target.result;
+      if(!database.objectStoreNames.contains(RECORD_STORE))database.createObjectStore(RECORD_STORE,{keyPath:'id'});
+      if(!database.objectStoreNames.contains(SETTINGS_STORE))database.createObjectStore(SETTINGS_STORE,{keyPath:'key'});
+    };
+    req.onsuccess=e=>{db=e.target.result;resolve(db)};
+    req.onerror=()=>reject(req.error||new Error('IndexedDB open failed'));
+  });
 }
-loadData();
+function idbGetAll(){return new Promise((resolve,reject)=>{const req=db.transaction(RECORD_STORE,'readonly').objectStore(RECORD_STORE).getAll();req.onsuccess=()=>resolve((req.result||[]).map(normalizeRecord));req.onerror=()=>reject(req.error)})}
+function idbPutRecords(items){return new Promise((resolve,reject)=>{const tx=db.transaction(RECORD_STORE,'readwrite');const store=tx.objectStore(RECORD_STORE);items.forEach(x=>store.put(normalizeRecord(x)));tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('record write failed'));tx.onabort=()=>reject(tx.error||new Error('record write aborted'))})}
+function idbDeleteRecord(id){return new Promise((resolve,reject)=>{const tx=db.transaction(RECORD_STORE,'readwrite');tx.objectStore(RECORD_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('record delete failed'))})}
+function idbClearRecords(){return new Promise((resolve,reject)=>{const tx=db.transaction(RECORD_STORE,'readwrite');tx.objectStore(RECORD_STORE).clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('record clear failed'))})}
+function idbReplaceRecords(items){return new Promise((resolve,reject)=>{const tx=db.transaction(RECORD_STORE,'readwrite'),store=tx.objectStore(RECORD_STORE);store.clear();items.forEach(x=>store.put(normalizeRecord(x)));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('record replace failed'))})}
+function idbGetSetting(){return new Promise((resolve,reject)=>{const req=db.transaction(SETTINGS_STORE,'readonly').objectStore(SETTINGS_STORE).get('settings');req.onsuccess=()=>resolve(req.result?.value||null);req.onerror=()=>reject(req.error)})}
+function idbPutSettings(value){return new Promise((resolve,reject)=>{const tx=db.transaction(SETTINGS_STORE,'readwrite');tx.objectStore(SETTINGS_STORE).put({key:'settings',value});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('settings write failed'))})}
+async function migrateLegacyData(){
+  const existing=await idbGetAll();
+  if(existing.length)return existing;
+  let legacy=[];
+  for(const key of OLD_KEYS){
+    try{
+      const raw=JSON.parse(localStorage.getItem(key)||'null');
+      const arr=Array.isArray(raw)?raw:(raw&&Array.isArray(raw.records)?raw.records:null);
+      if(arr?.length){legacy=arr.map(normalizeRecord);break}
+    }catch(e){}
+  }
+  if(legacy.length){await idbPutRecords(legacy)}
+  return legacy;
+}
+async function initStorage(){
+  try{
+    await openDatabase();
+    records=await migrateLegacyData();
+    const storedSettings=await idbGetSetting();
+    if(storedSettings&&typeof storedSettings==='object')settings={...settings,...storedSettings};
+    else{
+      try{const legacySettings=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');if(legacySettings&&typeof legacySettings==='object')settings={...settings,...legacySettings}}catch(e){}
+      await idbPutSettings(settings);
+    }
+    return true;
+  }catch(e){
+    toast('브라우저 데이터베이스를 열지 못했습니다. 이 브라우저에서는 기존 저장 방식을 계속 사용합니다.');
+    try{
+      const parsed=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(parsed))records=parsed.map(normalizeRecord);
+      if(!records.length)for(const oldKey of OLD_KEYS){const old=JSON.parse(localStorage.getItem(oldKey)||'null');const arr=Array.isArray(old)?old:(old&&Array.isArray(old.records)?old.records:null);if(arr?.length){records=arr.map(normalizeRecord);break}}
+      const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');if(s&&typeof s==='object')settings={...settings,...s};
+    }catch(err){}
+    return false;
+  }
+}
 
 /* =========================================================
    날짜 — 로컬 날짜 안전 처리
@@ -419,9 +461,15 @@ function removeDraft(id){if(draftRows.length<=1)return;draftRows=draftRows.filte
 let toastTimer=null,lastDeleted=null;
 function toast(message,action){clearTimeout(toastTimer);$('toastText').textContent=message;const b=$('toastAction');if(action){b.classList.remove('hidden');b.textContent=action.label;b.onclick=()=>{action.fn();hideToast()}}else{b.classList.add('hidden');b.onclick=null} $('toast').classList.add('show');toastTimer=setTimeout(hideToast,3600)}
 function hideToast(){$('toast').classList.remove('show')}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));renderAll();return true}catch(e){toast('브라우저 저장공간에 저장하지 못했습니다. 백업 파일을 내려받아 주세요.');return false}}
-function addRecords(items){records.push(...items.map(normalizeRecord));if(persist())toast(`${items.length}개의 운동 기록을 저장했습니다.`)}
-function removeRecord(id){const idx=records.findIndex(r=>String(r.id)===String(id));if(idx<0)return;const removed=records.splice(idx,1)[0];if(persist()){lastDeleted={record:removed,index:idx};toast('운동 기록을 삭제했습니다.',{label:'되돌리기',fn:()=>{if(lastDeleted){records.splice(Math.min(lastDeleted.index,records.length),0,lastDeleted.record);lastDeleted=null;persist();toast('삭제를 되돌렸습니다.')}}})}}
+async function persist(){
+  try{
+    if(db){await idbReplaceRecords(records);await idbPutSettings(settings)}
+    else{localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings))}
+    renderAll();if(dataChannel)dataChannel.postMessage('refresh');return true;
+  }catch(e){toast('운동 기록을 저장하지 못했습니다. 백업 파일을 내려받아 주세요.');return false}
+}
+async function addRecords(items){records.push(...items.map(normalizeRecord));if(await persist())toast(`${items.length}개의 운동 기록을 저장했습니다.`)}
+async function removeRecord(id){const idx=records.findIndex(r=>String(r.id)===String(id));if(idx<0)return;const removed=records.splice(idx,1)[0];if(await persist()){lastDeleted={record:removed,index:idx};toast('운동 기록을 삭제했습니다.',{label:'되돌리기',fn:async()=>{if(lastDeleted){records.splice(Math.min(lastDeleted.index,records.length),0,lastDeleted.record);lastDeleted=null;await persist();toast('삭제를 되돌렸습니다.')}}})}}
 function buildRecordsFromDrafts(){
   const date=$('sessionDate').value;const out=[];const errors=[];
   draftRows.forEach((r,i)=>{
@@ -441,13 +489,13 @@ function buildRecordsFromDrafts(){
   });
   return{out,errors};
 }
-function saveAll(){
+async function saveAll(){
   const date=$('sessionDate').value;if(!date){toast('운동 날짜를 먼저 선택하세요.');$('sessionDate').focus();return}
   const {out,errors}=buildRecordsFromDrafts();document.querySelectorAll('.session-row').forEach(x=>x.classList.remove('invalid'));
   errors.forEach(e=>{const row=document.querySelector(`[data-row="${e.rowId}"]`);if(row){row.classList.add('invalid');const m=row.querySelector('.row-message');if(m)m.textContent=e.message}});
   if(errors.length){toast(`${errors.length}개 행의 입력을 확인하세요.`);document.querySelector(`[data-row="${errors[0].rowId}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});return}
   if(!out.length){toast('저장할 운동이 없습니다.');return}
-  addRecords(out);resetDraft();
+  await addRecords(out);resetDraft();
 }
 
 /* =========================================================
@@ -505,13 +553,13 @@ function getEditFormHtml(r){
 function openEdit(id){const r=records.find(x=>String(x.id)===String(id));if(!r)return;editingId=id;editBackup={...r};$('editFields').innerHTML=getEditFormHtml(r);$('editBackdrop').classList.add('show');$('editBackdrop').setAttribute('aria-hidden','false');setupEditDynamic();setTimeout(()=>($('editActivity')||$('editDate'))?.focus(),0)}
 function setupEditDynamic(){const sync=()=>{const a=$('editActivity').value;if(paceBasedActivities.includes(a)){if(!$('editPace'))return;const e=estimatePace(a,$('editPace').value);const t=$('editIntensityText'),b=$('editIntensityBadge');if(e){t.textContent=`${activityName(a)} · ${e.met.toFixed(1)} MET`;b.textContent=e.label;b.className='badge '+e.cls;$('editPaceHelp').textContent=`${e.speed.toFixed(1)} km/h · 자동 판정` }else{t.textContent='페이스 입력 필요';b.textContent='대기';b.className='badge uncertain';$('editPaceHelp').textContent='예: 08:00 또는 0800'}}};if($('editPace')){$('editPace').addEventListener('input',function(){normalizePaceInput(this);sync()});sync()}$('editActivity').addEventListener('change',()=>{const current={date:$('editDate').value,activity:$('editActivity').value,minutes:$('editMinutes')?.value||editBackup.minutes,intensity:editBackup.intensity,pace:editBackup.pace,strengthName:editBackup.strengthName};$('editFields').innerHTML=getEditFormHtml(current);setupEditDynamic()})}
 function closeEdit(){editingId=null;editBackup=null;$('editBackdrop').classList.remove('show');$('editBackdrop').setAttribute('aria-hidden','true')}
-function saveEdit(){if(editingId==null)return;const r=records.find(x=>String(x.id)===String(editingId));if(!r)return;const date=$('editDate').value,activity=$('editActivity').value,minutes=Number($('editMinutes').value);if(!date||!minutes||minutes<1){toast('날짜와 시간을 확인하세요.');return}r.date=date;r.activity=activity;r.minutes=minutes;const mode=activityMeta[activity]?.mode;if(mode==='pace'){const e=estimatePace(activity,$('editPace').value);if(!e){toast('페이스를 MM:SS 형식으로 입력하세요.');$('editPace').focus();return}r.intensity=e.key;r.met=e.met;r.pace=paceText(e.sec);r.speedKmh=e.speed;r.label=`${activityName(activity)} · ${paceText(e.sec)}`}else if(mode==='strength'){r.intensity=$('editIntensity').value;r.strengthName=$('editStrengthName').value.trim();const d=manualDetail('strength',r.intensity);r.met=d.met;r.label=`근력${r.strengthName?' · '+r.strengthName:''}`}else if(mode==='manual-stairs'||mode==='manual-cycle'){const level=$('editIntensity').value;r.manualLevel=level;const d=manualDetail(activity,level);const c=classify(d.met);r.intensity=c.key;r.met=d.met;r.pace=null;r.speedKmh=null;r.label=d.label}else{r.intensity=$('editIntensity')?.value||r.intensity;r.pace=$('editPace')?.value?paceText(parsePace($('editPace').value)):r.pace||null}closeEdit();if(persist())toast('운동 기록을 수정했습니다.')}
+async function saveEdit(){if(editingId==null)return;const r=records.find(x=>String(x.id)===String(editingId));if(!r)return;const date=$('editDate').value,activity=$('editActivity').value,minutes=Number($('editMinutes').value);if(!date||!minutes||minutes<1){toast('날짜와 시간을 확인하세요.');return}r.date=date;r.activity=activity;r.minutes=minutes;const mode=activityMeta[activity]?.mode;if(mode==='pace'){const e=estimatePace(activity,$('editPace').value);if(!e){toast('페이스를 MM:SS 형식으로 입력하세요.');$('editPace').focus();return}r.intensity=e.key;r.met=e.met;r.pace=paceText(e.sec);r.speedKmh=e.speed;r.label=`${activityName(activity)} · ${paceText(e.sec)}`}else if(mode==='strength'){r.intensity=$('editIntensity').value;r.strengthName=$('editStrengthName').value.trim();const d=manualDetail('strength',r.intensity);r.met=d.met;r.label=`근력${r.strengthName?' · '+r.strengthName:''}`}else if(mode==='manual-stairs'||mode==='manual-cycle'){const level=$('editIntensity').value;r.manualLevel=level;const d=manualDetail(activity,level);const c=classify(d.met);r.intensity=c.key;r.met=d.met;r.pace=null;r.speedKmh=null;r.label=d.label}else{r.intensity=$('editIntensity')?.value||r.intensity;r.pace=$('editPace')?.value?paceText(parsePace($('editPace').value)):r.pace||null}closeEdit();if(await persist())toast('운동 기록을 수정했습니다.')}
 
 /* =========================================================
    백업 / 복원
 ========================================================= */
 function exportData(){const payload={version:5,exportedAt:new Date().toISOString(),records,settings};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='who-exercise-backup-v5.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('백업 파일을 다운로드했습니다.')}
-function importData(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result),incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');const cleaned=incoming.map(normalizeRecord);if(!confirm(`백업에서 ${cleaned.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=cleaned;if(data&&data.settings)settings={...settings,...data.settings};recordPage=1;if(persist())toast('백업 복원이 완료되었습니다.')}catch(e){toast('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)}
+function importData(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result),incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');const cleaned=incoming.map(normalizeRecord);if(!confirm(`백업에서 ${cleaned.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=cleaned;if(data&&data.settings)settings={...settings,...data.settings};recordPage=1;persist().then(ok=>{if(ok)toast('백업 복원이 완료되었습니다.')})}catch(e){toast('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)}
 
 /* =========================================================
    이벤트
@@ -524,17 +572,17 @@ $('sessionList').addEventListener('click',e=>{const b=e.target.closest('[data-re
 $('saveAllBtn').addEventListener('click',saveAll);
 $('setTodayBtn').addEventListener('click',()=>{$('sessionDate').value=localISO(today());$('sessionDate').focus()});
 $('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',()=>{$('restoreFile').click()});$('restoreFile').addEventListener('change',e=>{importData(e.target.files[0]);e.target.value=''});
-$('clearBtn').addEventListener('click',()=>{if(!records.length){toast('삭제할 기록이 없습니다.');return}if(confirm(`저장된 ${records.length}개의 운동 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)){records=[];persist();toast('전체 기록을 삭제했습니다.')}});
+$('clearBtn').addEventListener('click',()=>{if(!records.length){toast('삭제할 기록이 없습니다.');return}if(confirm(`저장된 ${records.length}개의 운동 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)){records=[];persist().then(()=>toast('전체 기록을 삭제했습니다.'))}});
 
 document.querySelectorAll('.period-tab').forEach(btn=>btn.addEventListener('click',()=>{periodType=btn.dataset.period;setPeriodAnchorToCurrent();document.querySelectorAll('.period-tab').forEach(x=>x.classList.toggle('active',x===btn));renderAll()}));
 $('prevPeriod').addEventListener('click',()=>shiftPeriod(-1));$('nextPeriod').addEventListener('click',()=>shiftPeriod(1));$('currentPeriod').addEventListener('click',()=>{setPeriodAnchorToCurrent();renderAll()});
 ['recordSearch','recordActivity','recordIntensity','recordSort'].forEach(id=>$(id).addEventListener(id==='recordSearch'?'input':'change',()=>{recordPage=1;renderRecords()}));
 $('records').addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openEdit(edit.dataset.edit);if(del){const r=records.find(x=>String(x.id)===String(del.dataset.delete));if(r&&confirm(`${fmtDate(r.date)} ${r.label||activityName(r.activity)} 기록을 삭제할까요?`))removeRecord(r.id)}});
 $('pagination').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(!b)return;recordPage=Math.max(1,Number(b.dataset.page)||1);renderRecords()});
-$('saveGoalBtn').addEventListener('click',()=>{const g=Math.max(1,Math.round(Number($('weeklyGoal').value)||150));settings.weeklyGoal=g;if(persist())toast(`주간 목표를 ${g}점으로 저장했습니다.`)});
+$('saveGoalBtn').addEventListener('click',()=>{const g=Math.max(1,Math.round(Number($('weeklyGoal').value)||150));settings.weeklyGoal=g;persist().then(ok=>{if(ok)toast(`주간 목표를 ${g}점으로 저장했습니다.`)})});
 $('weeklyGoal').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveGoalBtn').click()});
 $('cancelEditBtn').addEventListener('click',closeEdit);$('saveEditBtn').addEventListener('click',saveEdit);$('editBackdrop').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEdit()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('editBackdrop').classList.contains('show'))closeEdit()});
-window.addEventListener('storage',e=>{if(e.key===KEY){try{records=JSON.parse(e.newValue||'[]').map(normalizeRecord);renderAll();toast('다른 탭에서 기록이 업데이트되었습니다.')}catch(err){}}});
+const dataChannel='BroadcastChannel' in window?new BroadcastChannel('who-exercise-sync'):null;if(dataChannel){dataChannel.onmessage=async e=>{if(e.data==='refresh'&&db){try{records=await idbGetAll();const s=await idbGetSetting();if(s)settings={...settings,...s};renderAll();toast('다른 탭에서 기록이 업데이트되었습니다.')}catch(err){}}}}
 
 /* =========================================================
    수면 호흡기
@@ -559,7 +607,7 @@ $('btn-478').addEventListener('click',()=>selectMode('478'));$('btn-box').addEve
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function escapeAttr(value){return escapeHtml(value)}
 function renderAll(){renderDashboard();renderPeriod();renderActivityStats();renderRecords()}
-$('sessionDate').value=localISO(today());draftRows=[newDraft()];renderSessionRows();resetSleepUI();renderAll();
+$('sessionDate').value=localISO(today());draftRows=[newDraft()];renderSessionRows();resetSleepUI();renderAll();initStorage().then(()=>{renderAll();if($('saveHint'))$('saveHint').textContent=records.length?`${records.length}개 저장됨`:'새 기록을 입력하세요.'});
 </script>
 </body>
 </html>
