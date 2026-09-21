@@ -44,6 +44,28 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
   <h1>WHO 운동 기록</h1>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
+  <section class="card" id="cloudCard" style="margin-top:14px">
+    <div class="section-title"><h2>☁️ 클라우드 동기화</h2><span class="tiny" id="cloudStatus">확인 중…</span></div>
+    <div id="cloudLoggedOut">
+      <div class="mini">같은 계정으로 로그인하면 PC·휴대폰·태블릿에서 운동 기록을 공유합니다.</div>
+      <div class="actions" style="margin-top:10px">
+        <input id="authEmail" type="email" autocomplete="email" placeholder="이메일" style="flex:1;min-width:180px">
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="비밀번호" style="flex:1;min-width:180px">
+      </div>
+      <div class="actions"><button class="btn" type="button" id="signInBtn">로그인</button></div>
+      <div class="help">로그인은 Supabase 계정으로 합니다. 현재 브라우저의 기존 기록은 로그인 후 서버로 이전할 수 있습니다.</div>
+    </div>
+    <div id="cloudLoggedIn" class="hidden">
+      <div class="mini">로그인 계정: <b id="cloudUserEmail"></b></div>
+      <div class="actions">
+        <button class="btn secondary" type="button" id="syncBtn">☁️ 서버에서 새로고침</button>
+        <button class="btn secondary" type="button" id="uploadLocalBtn">현재 기록 서버에 올리기</button>
+        <button class="btn ghost" type="button" id="signOutBtn">로그아웃</button>
+      </div>
+      <div class="help" id="cloudMessage">동기화 준비 중</div>
+    </div>
+  </section>
+
   <section class="dashboard">
     <div class="card score-card">
       <div class="hero">
@@ -166,6 +188,23 @@ const supabaseClient = window.supabase.createClient(
 );
 
 let currentUser = null;
+let cloudSyncing=false;
+function setCloudStatus(message,ok=true){const s=$('cloudStatus'),m=$('cloudMessage');if(s){s.textContent=message;s.style.color=ok?'var(--good)':'var(--bad)'}if(m)m.textContent=message}
+function showCloudLoggedIn(){ $('cloudLoggedOut').classList.add('hidden'); $('cloudLoggedIn').classList.remove('hidden'); $('cloudUserEmail').textContent=currentUser?.email||''; }
+function showCloudLoggedOut(){ $('cloudLoggedOut').classList.remove('hidden'); $('cloudLoggedIn').classList.add('hidden'); setCloudStatus('로그인 필요',false); }
+function dbToRecord(row){return {id:String(row.id),date:row.date,activity:row.activity||'other',intensity:row.intensity||'light',minutes:Number(row.minutes||0),met:row.met!=null?Number(row.met):null,label:row.label||'',pace:row.pace||null,speedKmh:row.speed_kmh!=null?Number(row.speed_kmh):null,note:row.note||'',interval:!!row.interval,segment:row.segment||''}}
+function recordToDb(r){return {id:String(r.id),user_id:currentUser.id,date:r.date,activity:r.activity??null,intensity:r.intensity??null,minutes:Number(r.minutes||0),met:r.met!=null?Number(r.met):null,label:r.label??null,pace:r.pace??null,speed_kmh:r.speedKmh!=null?Number(r.speedKmh):null,note:r.note??null,interval:!!r.interval,segment:r.segment??null}}
+async function cloudUpsert(r){if(!currentUser||!r)return true;const {error}=await supabaseClient.from('exercise_records').upsert(recordToDb(r),{onConflict:'id'});if(error){console.error(error);setCloudStatus('서버 저장 실패: '+error.message,false);return false}return true}
+async function cloudDelete(id){if(!currentUser)return true;const {error}=await supabaseClient.from('exercise_records').delete().eq('id',String(id)).eq('user_id',currentUser.id);if(error){console.error(error);setCloudStatus('서버 삭제 실패: '+error.message,false);return false}return true}
+async function loadCloudRecords(){if(!currentUser)return;cloudSyncing=true;setCloudStatus('☁️ 서버에서 기록 불러오는 중…');const {data,error}=await supabaseClient.from('exercise_records').select('*').eq('user_id',currentUser.id).order('date',{ascending:false});if(error){console.error(error);cloudSyncing=false;setCloudStatus('서버 불러오기 실패: '+error.message,false);return}records=(data||[]).map(dbToRecord);localStorage.setItem(KEY,JSON.stringify(records));cloudSyncing=false;renderAll();setCloudStatus(`☁️ 서버 동기화 완료 · ${records.length}개`)}
+async function uploadAllLocalRecords(showAlert=true){if(!currentUser){if(showAlert)alert('먼저 로그인하세요.');return}if(!records.length){if(showAlert)alert('현재 브라우저에 저장된 기록이 없습니다.');return}cloudSyncing=true;setCloudStatus(`☁️ ${records.length}개 업로드 중…`);const {error}=await supabaseClient.from('exercise_records').upsert(records.map(recordToDb),{onConflict:'id'});cloudSyncing=false;if(error){console.error(error);setCloudStatus('기록 업로드 실패: '+error.message,false);if(showAlert)alert('서버 업로드 실패\n\n'+error.message);return}await loadCloudRecords();if(showAlert)alert('현재 브라우저의 기록을 서버에 저장했습니다.')}
+async function migrateLocalOnLogin(){const local=[...records];const {data,error}=await supabaseClient.from('exercise_records').select('id').eq('user_id',currentUser.id);if(error){setCloudStatus('서버 확인 실패: '+error.message,false);return}const ids=new Set((data||[]).map(x=>String(x.id)));const only=local.filter(r=>!ids.has(String(r.id)));if(only.length){cloudSyncing=true;setCloudStatus(`☁️ 기존 브라우저 기록 ${only.length}개 이전 중…`);const {error:e}=await supabaseClient.from('exercise_records').upsert(only.map(recordToDb),{onConflict:'id'});if(e){console.error(e);setCloudStatus('기존 기록 이전 실패: '+e.message,false);cloudSyncing=false;return}}await loadCloudRecords()}
+async function signIn(){const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password){alert('이메일과 비밀번호를 입력하세요.');return}const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){alert('로그인 실패\n\n'+error.message);return}currentUser=data.user;showCloudLoggedIn();await migrateLocalOnLogin()}
+async function signOut(){await supabaseClient.auth.signOut();currentUser=null;showCloudLoggedOut()}
+$('signInBtn').addEventListener('click',signIn);$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});$('syncBtn').addEventListener('click',loadCloudRecords);$('uploadLocalBtn').addEventListener('click',()=>uploadAllLocalRecords(true));$('signOutBtn').addEventListener('click',signOut);
+(async()=>{const {data,error}=await supabaseClient.auth.getSession();if(error){setCloudStatus('로그인 상태 확인 실패',false);return}if(data?.session?.user){currentUser=data.session.user;showCloudLoggedIn();await migrateLocalOnLogin()}else showCloudLoggedOut()})();
+supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){currentUser=null;showCloudLoggedOut()}else if(event==='SIGNED_IN'&&session?.user){currentUser=session.user;showCloudLoggedIn();window.setTimeout(()=>migrateLocalOnLogin(),0)}});
+
 
 /* =========================================================
    저장 / 데이터
@@ -437,9 +476,9 @@ function openEdit(id){
   const r=records.find(x=>String(x.id)===String(id));if(!r)return;editingId=id;$('editDate').value=r.date||iso(today());$('editActivity').value=['powerwalk','walk','run','stairs','cycle','hiking','housework','interval'].includes(r.activity)?r.activity:'powerwalk';$('editMinutes').value=r.minutes||'';$('editIntensity').value=r.intensity||'moderate';$('editPace').value=r.pace?String(r.pace).replace('/km',''):'';if(!$('editNote')){const n=document.createElement('input');n.id='editNote';n.type='text';n.value=r.note||'';} $('editBackdrop').classList.add('show');
 }
 function closeEdit(){editingId=null;$('editBackdrop').classList.remove('show')}
-function saveEdit(){
+async function saveEdit(){
   if(editingId==null)return;const r=records.find(x=>String(x.id)===String(editingId));if(!r)return;const minutes=Number($('editMinutes').value);if(!minutes||minutes<1){alert('시간을 확인하세요.');return}
-  const activity=$('editActivity').value;const paceRaw=$('editPace').value;const e=['powerwalk','walk','run','hiking'].includes(activity)?estimatePace(activity,paceRaw):null;r.date=$('editDate').value;r.activity=activity;r.minutes=minutes;r.intensity=$('editIntensity').value;r.pace=e?paceText(e.sec):null;r.speedKmh=e?e.speed:null;r.met=e?e.met:(activity==='housework'?3.3:(r.met||3));r.label=e?`${paceProfiles[activity].name} · ${paceText(e.sec)}`:activityName(activity);r.note=$('editNote')?.value.trim()||'';closeEdit();persist();
+  const activity=$('editActivity').value;const paceRaw=$('editPace').value;const e=['powerwalk','walk','run','hiking'].includes(activity)?estimatePace(activity,paceRaw):null;r.date=$('editDate').value;r.activity=activity;r.minutes=minutes;r.intensity=$('editIntensity').value;r.pace=e?paceText(e.sec):null;r.speedKmh=e?e.speed:null;r.met=e?e.met:(activity==='housework'?3.3:(r.met||3));r.label=e?`${paceProfiles[activity].name} · ${paceText(e.sec)}`:activityName(activity);r.note=$('editNote')?.value.trim()||'';closeEdit();persist();renderAll();if(currentUser&&!cloudSyncing)await cloudUpsert(r);
 }
 
 /* =========================================================
@@ -449,7 +488,7 @@ function exportData(){
   const payload={version:4,exportedAt:new Date().toISOString(),records,settings};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='who-exercise-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
 function importData(file){
-  if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:r.id??(Date.now()+Math.random())}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
+  if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
 }
 
 function parseSmartText(text){
@@ -501,7 +540,7 @@ $('form').addEventListener('submit',ev=>{
   else{const d=getManualDetail(activity);const c=classify(d.met);e={...c,met:d.met};met=d.met;label=d.label}
   addRecord({date,intensity:e.key,minutes,met,label,activity,pace,speedKmh,note:$('recordNote').value.trim()});$('minutes').value='';$('recordNote').value='';$('smartInput').value='';$('smartResult').classList.remove('show');clearDraft();showToast('기록을 추가했습니다.');
 });
-$('todayBtn').addEventListener('click',()=>{$('date').value=iso(today())});$('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',()=>{$('restoreFile').click()});$('restoreFile').addEventListener('change',e=>importData(e.target.files[0]));$('clearBtn').addEventListener('click',()=>{if(confirm('저장된 운동 기록을 모두 삭제할까요?')){records=[];persist()}});
+$('todayBtn').addEventListener('click',()=>{$('date').value=iso(today())});$('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',()=>{$('restoreFile').click()});$('restoreFile').addEventListener('change',e=>importData(e.target.files[0]));$('clearBtn').addEventListener('click',async()=>{if(confirm('저장된 운동 기록을 모두 삭제할까요?')){const ids=records.map(r=>r.id);records=[];persist();renderAll();if(currentUser&&!cloudSyncing){for(const id of ids)await cloudDelete(id)}}});
 
 /* period events */
 document.querySelectorAll('.period-tab').forEach(btn=>btn.addEventListener('click',()=>{periodType=btn.dataset.period;setPeriodAnchorToCurrent();document.querySelectorAll('.period-tab').forEach(x=>x.classList.toggle('active',x===btn));renderAll()}));$('prevPeriod').addEventListener('click',()=>shiftPeriod(-1));$('nextPeriod').addEventListener('click',()=>shiftPeriod(1));$('currentPeriod').addEventListener('click',()=>{setPeriodAnchorToCurrent();renderAll()});
