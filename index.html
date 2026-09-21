@@ -156,7 +156,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
   </section>
 
   <div class="note"><b>판정 기준:</b> WHO 성인은 주당 중강도 유산소 150–300분 또는 고강도 75–150분 또는 동등한 조합을 권고합니다. 이 페이지는 최소량 판정을 위해 고강도 1분을 중강도 2분으로 환산합니다.</div>
-  <div class="footer">기록은 이 브라우저의 저장공간에 저장됩니다. GitHub Pages에 업로드된 파일 자체에는 운동 기록이 저장되지 않습니다. 다른 기기와 자동 동기화되지 않습니다.</div>
+  <div class="footer">로그인하면 운동 기록이 Supabase 서버에 저장되어 같은 계정의 PC·휴대폰·태블릿에서 동기화됩니다. 로그아웃 상태에서는 이 브라우저의 저장공간을 사용합니다.</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -179,7 +179,9 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 <script>
 'use strict';
 
-  const SUPABASE_URL = 'https://qrikwaffvunhyvfoeclv.supabase.co';
+  const $=id=>document.getElementById(id);
+
+const SUPABASE_URL = 'https://qrikwaffvunhyvfoeclv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_QhyqWAmqAOOhAyK4a8nF1g_r1OJDoyf';
 
 const supabaseClient = window.supabase.createClient(
@@ -238,8 +240,6 @@ try{
   const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
   if(s&&typeof s==='object') settings={...settings,...s};
 }catch(e){}
-
-const $=id=>document.getElementById(id);
 
 /* =========================================================
    날짜
@@ -488,7 +488,7 @@ function exportData(){
   const payload={version:4,exportedAt:new Date().toISOString(),records,settings};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='who-exercise-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
 function importData(file){
-  if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
+  if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
 }
 
 function parseSmartText(text){
