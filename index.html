@@ -94,14 +94,14 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
   <section class="card add-card">
     <div class="section-title"><h2>운동 기록 추가</h2><span class="tiny">현재 주에 자동 반영</span></div>
     <div class="smart-add">
-      <div class="smart-title"><b>⚡ 빠른 기록</b><span class="tiny">문장으로 적어도 자동 입력됩니다</span></div>
-      <div class="smart-input-row"><input id="smartInput" type="text" autocomplete="off" placeholder="예: 오늘 집 청소하고 매트 옮기는데 2시간 걸림"><button class="icon-btn" type="button" id="voiceBtn" title="음성 입력">🎙️</button><button class="btn" type="button" id="smartParseBtn">자동 입력</button></div>
-      <div class="smart-hints"><button type="button" data-smart="오늘 파워워킹 40분, 페이스 10:30">파워워킹 40분</button><button type="button" data-smart="오늘 러닝 30분, 페이스 8:00">러닝 30분</button><button type="button" data-smart="오늘 집 청소 60분">집 청소 60분</button><button type="button" data-smart="오늘 매트와 가구를 옮기고 정리 120분">매트·가구 정리 120분</button></div>
+      <div class="smart-title"><b>🧠 AI 운동 기록</b><span class="tiny">자연어로 입력하면 운동 종류·시간·강도를 분석합니다</span></div>
+      <div class="smart-input-row"><input id="smartInput" type="text" autocomplete="off" placeholder="예: 스쿼트 런지 3세트 했고 20분 정도"><button class="icon-btn" type="button" id="voiceBtn" title="음성 입력">🎙️</button><button class="btn" type="button" id="smartParseBtn">AI 분석</button></div>
+      <div class="smart-hints"><button type="button" data-smart="오늘 파워워킹 40분, 페이스 10:30">파워워킹 40분</button><button type="button" data-smart="오늘 러닝 30분, 페이스 8:00">러닝 30분</button><button type="button" data-smart="스쿼트 런지 3세트, 20분">스쿼트·런지</button><button type="button" data-smart="오늘 집 청소 60분">집 청소 60분</button></div>
       <div class="smart-result" id="smartResult"></div>
     </div>
     <form id="form" class="exercise-form">
       <div class="field"><label for="date">날짜</label><div class="date-row"><input id="date" type="date" required><button class="icon-btn" type="button" id="dateTodayBtn" title="오늘">오늘</button></div><div class="date-quick"><button type="button" data-date-offset="0">오늘</button><button type="button" data-date-offset="-1">어제</button><button type="button" data-date-offset="-2">그제</button></div></div>
-      <div class="field"><label for="activity">운동 종류</label><select id="activity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="interval">인터벌</option></select></div>
+      <div class="field"><label for="activity">운동 종류</label><select id="activity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="strength">근력운동</option><option value="interval">인터벌</option></select></div>
       <div class="field pace-box" id="paceWrap">
         <label for="pace">페이스</label>
         <div class="pace-row"><input id="pace" type="text" inputmode="text" autocomplete="off" placeholder="08:00" maxlength="6"><span class="pace-unit">/km</span></div>
@@ -112,7 +112,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
       <div class="field"><label for="recordNote">메모 <span class="tiny">선택</span></label><input id="recordNote" type="text" maxlength="80" placeholder="예: 퍼즐매트 전체 교체·청소"></div>
       <div class="field field-action"><button class="btn" type="submit">기록 추가</button></div>
     </form>
-    <div class="recent-picks" id="recentPicks"></div>
+    
     <div class="draft-note" id="draftNote"></div>
     <div class="interval-box" id="intervalBox">
       <div class="interval-title">인터벌 구성</div>
@@ -377,6 +377,7 @@ function interpolate(points,speed){
   }
   return points[points.length-1][1];
 }
+const strengthProfile={met:3.5,label:'근력운동',note:'스쿼트·런지·푸시업·덤벨 등 저항운동'};
 const houseworkProfiles={
   mixed:{met:3.3,label:'집안 정리·청소 혼합',note:'청소·정리·바닥 작업 등이 섞인 경우'},
   moving:{met:5.0,label:'매트·가구 이동/정리',note:'매트·가구·생활용품을 반복해서 옮기는 경우'},
@@ -398,6 +399,7 @@ function getManualDetail(activity){
   if(activity==='cycle'){
     const m={easy:{met:4,label:'자전거 · 가볍게'},mod:{met:6.8,label:'자전거 · 중간'},hard:{met:9.3,label:'자전거 · 강하게'}};return m[$('cycleIntensity').value];
   }
+  if(activity==='strength')return strengthProfile;
   if(activity==='housework'){
     return houseworkProfiles[$('houseworkType').value];
   }
@@ -454,14 +456,14 @@ function updateIntervalPreview(){
 async function addRecord(obj){const r={id:Date.now()+Math.random(),...obj};records.push(r);persist();if(currentUser&&!cloudSyncing)await cloudUpsert(r);}
 async function removeRecord(id){records=records.filter(r=>String(r.id)!==String(id));persist();if(currentUser&&!cloudSyncing)await cloudDelete(id)}
 function persist(){localStorage.setItem(KEY,JSON.stringify(records));renderAll()}
-function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',interval:'인터벌',housework:'생활활동/집안일',other:'기타'}[a]||a||'기타')}
+function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',housework:'생활활동/집안일',strength:'근력운동',interval:'인터벌',other:'기타'}[a]||a||'기타')}
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[c]))}
 function showToast(msg){const t=$('toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>t.classList.remove('show'),1800)}
 function setDraft(){const data={date:$('date')?.value,activity:$('activity')?.value,pace:$('pace')?.value,minutes:$('minutes')?.value,note:$('recordNote')?.value};localStorage.setItem('who-exercise-draft-v1',JSON.stringify(data));$('draftNote').textContent='입력 내용은 자동 임시저장됩니다.'}
 function restoreDraft(){try{const d=JSON.parse(localStorage.getItem('who-exercise-draft-v1')||'null');if(!d)return;if(d.date)$('date').value=d.date;if(d.activity)$('activity').value=d.activity;setupActivity();if(d.pace)$('pace').value=d.pace;if(d.minutes)$('minutes').value=d.minutes;if(d.note)$('recordNote').value=d.note;updateEstimate();$('draftNote').textContent='이전 입력을 복원했습니다.'}catch(e){}}
 function clearDraft(){localStorage.removeItem('who-exercise-draft-v1');$('draftNote').textContent='기록 완료 · 입력칸을 비웠습니다.'}
 function recentActivities(){const seen=new Set(),out=[];[...records].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).forEach(r=>{const key=r.activity+'|'+(r.pace||r.met||'');if(!seen.has(key)&&out.length<5){seen.add(key);out.push(r)}});return out}
-function renderRecentPicks(){const box=$('recentPicks');if(!box)return;const rs=recentActivities();box.innerHTML=rs.length?'<span class="tiny" style="align-self:center">최근 사용</span>'+rs.map(r=>`<button type="button" data-recent="${r.id}">${escapeHtml(r.label||activityName(r.activity))} · ${r.minutes}분</button>`).join(''):''}
+function {const box=$('recentPicks');if(!box)return;const rs=recentActivities();box.innerHTML=rs.length?'<span class="tiny" style="align-self:center">최근 사용</span>'+rs.map(r=>`<button type="button" data-recent="${r.id}">${escapeHtml(r.label||activityName(r.activity))} · ${r.minutes}분</button>`).join(''):''}
 
 function normalizePaceRecord(r){
   if(!r||r.interval||!['powerwalk','walk','run','hiking'].includes(r.activity)||!r.pace)return r;
@@ -579,7 +581,7 @@ function renderDashboard(){
 ========================================================= */
 let editingId=null;
 function openEdit(id){
-  const r=records.find(x=>String(x.id)===String(id));if(!r)return;editingId=id;$('editDate').value=r.date||iso(today());$('editActivity').value=['powerwalk','walk','run','stairs','cycle','hiking','housework','interval'].includes(r.activity)?r.activity:'powerwalk';$('editMinutes').value=r.minutes||'';$('editIntensity').value=r.intensity||'moderate';$('editPace').value=r.pace?String(r.pace).replace('/km',''):'';if(!$('editNote')){const n=document.createElement('input');n.id='editNote';n.type='text';n.value=r.note||'';} $('editBackdrop').classList.add('show');
+  const r=records.find(x=>String(x.id)===String(id));if(!r)return;editingId=id;$('editDate').value=r.date||iso(today());$('editActivity').value=['powerwalk','walk','run','stairs','cycle','hiking','housework','strength','interval'].includes(r.activity)?r.activity:'powerwalk';$('editMinutes').value=r.minutes||'';$('editIntensity').value=r.intensity||'moderate';$('editPace').value=r.pace?String(r.pace).replace('/km',''):'';if(!$('editNote')){const n=document.createElement('input');n.id='editNote';n.type='text';n.value=r.note||'';} $('editBackdrop').classList.add('show');
 }
 function closeEdit(){editingId=null;$('editBackdrop').classList.remove('show')}
 async function saveEdit(){
@@ -597,11 +599,20 @@ function importData(file){
   if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
 }
 
+async function parseSmartTextWithAI(text){
+  if(!currentUser||!supabaseClient)return null;
+  try{
+    const {data,error}=await supabaseClient.functions.invoke('ai-exercise-parser',{body:{text:String(text||'')}});
+    if(error)throw error;
+    return data?.result||data||null;
+  }catch(error){console.warn('AI 분석 실패, 로컬 판별로 전환:',error);return null}
+}
 function parseSmartText(text){
   const raw=String(text||'').trim();if(!raw)return null;const t=raw.toLowerCase();
   let date=iso(today());if(/어제/.test(raw))date=iso(addDays(today(),-1));else if(/그제|그저께/.test(raw))date=iso(addDays(today(),-2));
   const dm=raw.match(/(?:약\s*)?(\d+(?:\.\d+)?)\s*(시간|분)/);let minutes=dm?(dm[2]==='시간'?Number(dm[1])*60:Number(dm[1])):null;
   let activity='housework', sub='mixed';
+  if(/스쿼트|런지|푸시업|팔굽혀펴기|플랭크|덤벨|아령|벤치프레스|근력|웨이트|저항운동|풀업|턱걸이/.test(raw))activity='strength';
   if(/러닝|달리기|조깅|뛰/.test(raw))activity='run';
   else if(/파워워킹|빠르게 걷/.test(raw))activity='powerwalk';
   else if(/걷기|산책/.test(raw))activity='walk';
@@ -609,17 +620,19 @@ function parseSmartText(text){
   else if(/자전거|사이클/.test(raw))activity='cycle';
   else if(/등산|오르막/.test(raw))activity='hiking';
   else if(/인터벌/.test(raw))activity='interval';
-  if(/매트|가구|이동|운반|옮/.test(raw))sub=/운반|무거|박스/.test(raw)?'carrying':'moving';
+  if(activity!=='strength'&&/매트|가구|이동|운반|옮/.test(raw))sub=/운반|무거|박스/.test(raw)?'carrying':'moving';
   else if(/가벼|정리만|정돈/.test(raw))sub='light';
   let pace=null;const pm=raw.match(/(?:페이스|페이스는|pace)\s*[:：]?\s*(\d{1,2}[:.]\d{2})/i);if(pm)pace=pm[1];
   return {date,activity,minutes:minutes?Math.round(minutes):null,sub,pace,note:raw};
 }
-function applySmart(text){const p=parseSmartText(text);if(!p){$('smartResult').textContent='입력 내용을 이해하지 못했습니다. 예: "오늘 매트 옮기며 청소 120분"';$('smartResult').classList.add('show');return}
+async function applySmart(text){
+  const ai=await parseSmartTextWithAI(text);
+  const p=ai||parseSmartText(text);if(!p){$('smartResult').textContent='입력 내용을 이해하지 못했습니다. 예: "오늘 매트 옮기며 청소 120분"';$('smartResult').classList.add('show');return}
   $('date').value=p.date;$('activity').value=p.activity;setupActivity();
-  if(p.activity==='housework'&&$('houseworkType'))$('houseworkType').value=p.sub,$('houseworkType').dispatchEvent(new Event('change'));
+  if(p.activity==='housework'&&$('houseworkType')){$('houseworkType').value=p.sub;$('houseworkType').dispatchEvent(new Event('change'));}if(p.activity==='strength'&&$('strengthSets')&&p.sets)$('strengthSets').value=p.sets;
   if(p.pace&&$('pace')){$('pace').value=p.pace;normalizePaceInput($('pace'));}
   if(p.minutes)$('minutes').value=p.minutes;if($('recordNote'))$('recordNote').value=p.note;updateEstimate();
-  const label=activityName(p.activity)+(p.minutes?` · ${p.minutes}분`:'');$('smartResult').innerHTML=`<b>자동 입력 완료</b><br>${escapeHtml(label)} · ${p.date===iso(today())?'오늘':fmtDate(p.date)}${p.pace?` · ${p.pace}/km`:''}<br><span class="tiny">내용을 확인한 뒤 아래 「기록 추가」를 누르세요.</span>`;$('smartResult').classList.add('show');setDraft();}
+  const label=activityName(p.activity)+(p.minutes?` · ${p.minutes}분`:'')+(p.sets?` · ${p.sets}세트`:'');$('smartResult').innerHTML=`<b>자동 입력 완료</b><br>${escapeHtml(label)} · ${p.date===iso(today())?'오늘':fmtDate(p.date)}${p.pace?` · ${p.pace}/km`:''}<br><span class="tiny">내용을 확인한 뒤 아래 「기록 추가」를 누르세요.</span>`;$('smartResult').classList.add('show');setDraft();}
 function repeatRecord(id){const r=records.find(x=>String(x.id)===String(id));if(!r)return;$('date').value=iso(today());$('activity').value=r.activity||'powerwalk';setupActivity();if(r.pace&&$('pace'))$('pace').value=String(r.pace).replace('/km','');$('minutes').value=r.minutes||'';$('recordNote').value=r.note||'';updateEstimate();window.scrollTo({top:$('form').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});showToast('기록을 복사했습니다. 날짜·시간을 확인하세요.')}
 /* =========================================================
    이벤트
@@ -632,7 +645,7 @@ $('smartParseBtn').addEventListener('click',()=>applySmart($('smartInput').value
 $('smartInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applySmart(e.currentTarget.value)}});
 document.querySelectorAll('[data-smart]').forEach(b=>b.addEventListener('click',()=>{$('smartInput').value=b.dataset.smart;applySmart(b.dataset.smart)}));
 $('voiceBtn').addEventListener('click',()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){showToast('이 브라우저는 음성 입력을 지원하지 않습니다.');return}const rec=new SR();rec.lang='ko-KR';rec.interimResults=false;rec.maxAlternatives=1;rec.onstart=()=>showToast('말씀하세요.');rec.onresult=e=>{$('smartInput').value=e.results[0][0].transcript;applySmart($('smartInput').value)};rec.onerror=()=>showToast('음성 입력을 사용하지 못했습니다.');rec.start()});
-$('recentPicks').addEventListener('click',e=>{const b=e.target.closest('[data-recent]');if(b)repeatRecord(b.dataset.recent)});
+
 
 $('pace').addEventListener('input',function(){normalizePaceInput(this);this.classList.toggle('pace-has-value',!!this.value);updateEstimate()});$('pace').addEventListener('focus',()=>{$('pace').classList.add('pace-active');$('paceTyping').classList.add('show')});$('pace').addEventListener('blur',()=>{$('pace').classList.remove('pace-active');$('paceTyping').classList.remove('show')});
 $('intervalBase').addEventListener('change',updateIntervalPreview);$('recoveryPreset').addEventListener('change',function(){$('recoveryPace').disabled=this.value==='auto';updateIntervalPreview()});['fastPace','recoveryPace'].forEach(id=>$(id).addEventListener('input',function(){normalizePaceInput(this);updateIntervalPreview()}));['fastMinutes','recoveryMinutes'].forEach(id=>$(id).addEventListener('input',updateIntervalPreview));
@@ -643,7 +656,7 @@ $('form').addEventListener('submit',ev=>{
   }
   const minutes=Number($('minutes').value);if(!minutes||minutes<1)return;let e,label,pace=null,speedKmh=null,met;
   if(['powerwalk','walk','run','hiking'].includes(activity)){e=estimatePace(activity,$('pace').value);if(!e){alert('페이스를 MM:SS 형식으로 입력하세요. 예: 08:00');$('pace').focus();return}pace=paceText(e.sec);speedKmh=e.speed;met=e.met;label=`${paceProfiles[activity].name} · ${pace}`}
-  else{const d=getManualDetail(activity);const c=classify(d.met);e={...c,met:d.met};met=d.met;label=d.label}
+  else{const d=getManualDetail(activity);if(!d){alert('운동 종류의 세부 정보를 확인하세요.');return}const c=classify(d.met);e={...c,met:d.met};met=d.met;label=d.label}
   addRecord({date,intensity:e.key,minutes,met,label,activity,pace,speedKmh,note:$('recordNote').value.trim()});$('minutes').value='';$('recordNote').value='';$('smartInput').value='';$('smartResult').classList.remove('show');clearDraft();showToast('기록을 추가했습니다.');
 });
 $('todayBtn').addEventListener('click',()=>{$('date').value=iso(today())});$('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',()=>{$('restoreFile').click()});$('restoreFile').addEventListener('change',e=>importData(e.target.files[0]));$('clearBtn').addEventListener('click',async()=>{if(confirm('저장된 운동 기록을 모두 삭제할까요?')){const ids=records.map(r=>r.id);records=[];persist();renderAll();if(currentUser&&!cloudSyncing){for(const id of ids)await cloudDelete(id)}}});
