@@ -69,7 +69,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.10</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.11</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -819,6 +819,61 @@ function weeklySeries(count){
   }
   return out;
 }
+function isStrengthIntent(q){
+  return /근력|스쿼트|런지|푸시업|팔굽혀펴기|플랭크|덤벨|아령|웨이트|벤치프레스|풀업|턱걸이|저항운동|세트|반복|중량/.test(q);
+}
+function isStrengthProgressIntent(q){
+  return /점진|진행|늘리|증가|강해|성장|다음.*근력|근력.*다음|어떻게.*늘|몇.*세트|세트.*늘|중량.*늘|반복.*늘/.test(q);
+}
+function extractStrengthExercise(note){
+  const t=String(note||'');
+  const names=[
+    ['스쿼트','스쿼트'],['런지','런지'],['푸시업','푸시업'],['팔굽혀펴기','푸시업'],
+    ['플랭크','플랭크'],['덤벨','덤벨'],['아령','덤벨'],['벤치프레스','벤치프레스'],
+    ['풀업','풀업'],['턱걸이','풀업'],['로우','로우'],['컬','컬'],['프론트레이즈','프론트레이즈'],
+    ['프론트 레이즈','프론트레이즈'],['풀오버','풀오버'],['오버헤드','오버헤드'],
+    ['숄더프레스','숄더프레스'],['레그프레스','레그프레스'],['브릿지','브릿지']
+  ];
+  const found=[];
+  names.forEach(function(x){if(t.includes(x[0])&&!found.includes(x[1]))found.push(x[1])});
+  return found;
+}
+function strengthRecordInfo(r){
+  const note=String(r.note||'');
+  const setMatches=[...(note.matchAll(/(\d+)\s*세트/g))].map(function(m){return Number(m[1])});
+  const repMatches=[...(note.matchAll(/(\d+)\s*(?:회|회씩|reps?|rep)/gi))].map(function(m){return Number(m[1])});
+  const weightMatches=[...(note.matchAll(/(\d+(?:\.\d+)?)\s*(?:kg|킬로|키로)/gi))].map(function(m){return Number(m[1])});
+  return {
+    exercises:extractStrengthExercise(note).concat(extractStrengthExercise(r.label||'')).filter(function(v,i,a){return a.indexOf(v)===i}),
+    sets:Number(r.sets||0)||((setMatches.length)?Math.max.apply(null,setMatches):0)||null,
+    reps:repMatches.length?Math.max.apply(null,repMatches):null,
+    weightKg:weightMatches.length?Math.max.apply(null,weightMatches):null
+  };
+}
+function strengthProgressReply(q){
+  const all=records.filter(function(r){return r.activity==='strength'});
+  if(!all.length)return'저장된 근력운동 기록이 없습니다.';
+  const range=questionRange(q);
+  const inRange=all.filter(function(r){return r.date>=localDateKey(range.start)&&r.date<=localDateKey(range.end)});
+  const source=inRange.length?inRange:all;
+  const ordered=source.slice().sort(function(a,b){return a.date.localeCompare(b.date)||Number(a.id)-Number(b.id)});
+  const recent=ordered.slice(-6);
+  const infos=recent.map(function(r){return Object.assign({record:r},strengthRecordInfo(r))});
+  const maxSets=Math.max.apply(null,infos.map(function(x){return Number(x.sets||0)}));
+  const maxReps=Math.max.apply(null,infos.map(function(x){return Number(x.reps||0)}));
+  const maxWeight=Math.max.apply(null,infos.map(function(x){return Number(x.weightKg||0)}));
+  const exerciseCounts={};
+  infos.forEach(function(x){x.exercises.forEach(function(e){exerciseCounts[e]=(exerciseCounts[e]||0)+1})});
+  const exText=Object.entries(exerciseCounts).sort(function(a,b){return b[1]-a[1]}).map(function(x){return x[0]+' '+x[1]+'회'}).join(' · ');
+  let reply=(inRange.length?range.label+' 기준 ':'전체 기록 기준 ')+'근력운동 '+source.length+'회입니다.';
+  reply+='\n최근 기록: '+recent.map(function(x){return fmtDate(x.record.date)+' · '+(x.record.minutes||0)+'분'+(x.sets?' · '+x.sets+'세트':'')+(x.reps?' · '+x.reps+'회':'')+(x.weightKg?' · '+x.weightKg+'kg':'')}).join(' / ');
+  if(exText)reply+='\n운동 동작: '+exText;
+  if(maxSets)reply+='\n기록된 최대 세트: '+maxSets+'세트';
+  if(maxReps)reply+='\n기록에서 확인된 최대 반복: '+maxReps+'회';
+  if(maxWeight)reply+='\n기록된 최대 중량: '+maxWeight+'kg';
+  reply+='\n\n점진적 증량은 한 번에 크게 올리기보다, 현재 같은 동작의 세트·반복·중량을 기준으로 다음 세션에서 수행량을 조금씩 높이는 방식으로 기록하는 것이 좋습니다.';
+  return reply;
+}
 function localRecommend(){
   const recent=records.filter(function(r){return r.date>=iso(addDays(today(),-6))&&r.date<=iso(today())});
   const last=mostRecent(records);
@@ -898,7 +953,7 @@ function localCoachReply(question){
     return '기록된 최대 세트 수는 '+x.sets+'세트입니다. '+fmtDate(x.date)+' · '+x.minutes+'분 · '+(x.label||activityName(x.activity));
   }
 
-  if(/최근.*운동|마지막.*운동|마지막으로|최근 기록/.test(q)&&!/(패턴|부족|균형|편중|추세|트렌드|흐름)/.test(q)){
+  if(/최근.*운동|마지막.*운동|마지막으로|최근 기록/.test(q)&&!/(패턴|부족|균형|편중|추세|트렌드|흐름)/.test(q)&&!isStrengthIntent(q)){
     const x=mostRecent(filtered.length?filtered:records);
     if(!x)return'기록이 없습니다.';
     return '가장 최근 기록은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분 · '+intensityLabel(x.intensity)+'입니다.';
@@ -929,11 +984,8 @@ function localCoachReply(question){
     return reply;
   }
 
-  if(/근력|스쿼트|런지|덤벨|점진|세트/.test(q)){
-    const sr=records.filter(function(r){return r.activity==='strength'}).sort(function(a,b){return a.date.localeCompare(b.date)||Number(a.id)-Number(b.id)});
-    if(!sr.length)return'저장된 근력운동 기록이 아직 없습니다.';
-    const last=sr[sr.length-1],last5=sr.slice(-5),maxSets=maxSetRecord(sr);
-    return '근력운동은 총 '+sr.length+'회 기록되어 있습니다.\n최근: '+fmtDate(last.date)+' · '+last.minutes+'분'+(last.sets?' · '+last.sets+'세트':'')+(maxSets?'\n최대 기록 세트: '+maxSets.sets+'세트':'')+'\n\n최근 5회: '+last5.map(function(r){return fmtDate(r.date)+' '+r.minutes+'분'+(r.sets?' '+r.sets+'세트':'')}).join(' / ')+'\n\n같은 동작의 세트·반복·중량을 기록하면 다음 운동에서 점진적인 증가 여부를 더 정확하게 추적할 수 있습니다.';
+  if(isStrengthIntent(q)){
+    return strengthProgressReply(q);
   }
 
   if(/목표|몇 점|얼마 남|달성/.test(q)){
@@ -1016,7 +1068,8 @@ function parseSmartText(text){
   if(activity!=='strength'&&/매트|가구|이동|운반|옮/.test(raw))sub=/운반|무거|박스/.test(raw)?'carrying':'moving';
   else if(/가벼|정리만|정돈/.test(raw))sub='light';
   let pace=null;const pm=raw.match(/(?:페이스|페이스는|pace)\s*[:：]?\s*(\d{1,2}[:.]\d{2})/i);if(pm)pace=pm[1];
-  return {date,activity,minutes:minutes?Math.round(minutes):null,sub,pace,note:raw};
+  const sm=raw.match(/(\d+)\s*세트/);const rm=raw.match(/(\d+)\s*(?:회|회씩|reps?|rep)/i);const wm=raw.match(/(\d+(?:\.\d+)?)\s*(?:kg|킬로|키로)/i);
+  return {date,activity,minutes:minutes?Math.round(minutes):null,sub,pace,sets:sm?Number(sm[1]):null,reps:rm?Number(rm[1]):null,weightKg:wm?Number(wm[1]):null,note:raw};
 }
 async function applySmart(text){
   const ai=await parseSmartTextWithAI(text);
