@@ -482,7 +482,8 @@ function normalizePaceRecord(r){
 function normalizeStoredRecords(){
   let changed=0;
   records=records.map(r=>{
-    const n=normalizePaceRecord(r);
+    const s=normalizeSmartRecord(r);
+    const n=normalizePaceRecord(s);
     if(JSON.stringify(n)!==JSON.stringify(r))changed++;
     return n;
   });
