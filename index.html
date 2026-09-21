@@ -69,7 +69,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.6</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.7</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -159,7 +159,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <div class="section-title">
       <div>
         <h2 style="margin-bottom:4px">🤖 GPT 운동 코치</h2>
-        <div class="coach-header-note">저장된 운동 기록을 읽고 운동량·패턴·다음 운동을 대화로 분석합니다.</div>
+        <div class="coach-header-note">저장된 운동 기록을 계산해서 운동량·패턴·다음 운동을 분석합니다.</div>
       </div>
       <span class="coach-status no" id="coachStatus">로그인 필요</span>
     </div>
@@ -176,7 +176,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
         <button class="btn chat-send" type="button" id="coachSend">전송</button>
       </div>
     </div>
-    <div class="help">GPT 코치는 로그인한 계정의 운동 기록만 읽습니다. 대화에서는 기록을 추가하지 않고, 운동 기록 추가는 위의 AI 운동 기록창에서 확인 후 저장합니다.</div>
+    <div class="help">무료 코치는 저장된 운동 기록을 앱 안에서 계산합니다. 외부 AI API나 유료 크레딧을 사용하지 않습니다.</div>
   </section>
 
   <section class="card period-card">
@@ -661,13 +661,14 @@ function importData(file){
 
 
 /* =========================================================
-   GPT 운동 코치
+   무료 로컬 AI 운동 코치
+   외부 AI API를 사용하지 않고 앱의 실제 기록을 계산해 답합니다.
 ========================================================= */
-const CHAT_KEY_PREFIX='who-exercise-ai-chat-v1-';
+const CHAT_KEY_PREFIX='who-exercise-ai-chat-v2-';
 let coachMessages=[];
 let coachBusy=false;
 
-function chatStorageKey(){return CHAT_KEY_PREFIX+(currentUser?.id||'guest')}
+function chatStorageKey(){return CHAT_KEY_PREFIX+(currentUser?.id||'local')}
 
 function loadCoachChat(){
   try{
@@ -685,96 +686,178 @@ function saveCoachChat(){
 function renderCoachChat(){
   const box=$('coachMessages');if(!box)return;
   if(!coachMessages.length){
-    box.innerHTML='<div class="chat-empty">운동 기록을 바탕으로 질문해보세요.<br>예: 「이번 주 운동량 어때?」 「내일은 뭐 하지?」</div>';
+    box.innerHTML='<div class="chat-empty">내 운동 기록을 바탕으로 질문해보세요.<br>예: 「이번 주 운동량 어때?」 「다음 운동 뭐 하지?」</div>';
     return;
   }
-  box.innerHTML=coachMessages.map(m=>{
+  box.innerHTML=coachMessages.map(function(m){
     const role=m.role==='user'?'user':'assistant';
-    return '<div class="chat-msg '+role+'"><div><div class="chat-bubble">'+escapeHtml(m.content)+'</div><div class="chat-meta">'+(role==='user'?'나':'GPT 운동 코치')+'</div></div></div>';
+    return '<div class="chat-msg '+role+'"><div><div class="chat-bubble">'+escapeHtml(m.content)+'</div><div class="chat-meta">'+(role==='user'?'나':'무료 운동 코치')+'</div></div></div>';
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
 
 function setCoachUi(){
-  const logged=!!currentUser&&!!supabaseClient;
   const status=$('coachStatus'),send=$('coachSend'),input=$('coachInput');
   if(status){
-    status.textContent=logged?'내 기록 연결됨':'로그인 필요';
-    status.className='coach-status '+(logged?'ok':'no');
+    status.textContent='무료 분석 모드';
+    status.className='coach-status ok';
   }
-  if(send)send.disabled=!logged||coachBusy;
-  if(input)input.placeholder=logged?'예: 이번 주 운동량을 분석해줘.':'로그인하면 내 운동 기록을 읽어 답합니다.';
-  document.querySelectorAll('[data-coach-prompt]').forEach(b=>b.disabled=!logged||coachBusy);
+  if(send)send.disabled=coachBusy;
+  if(input)input.placeholder='예: 이번 주 운동량 어때?';
+  document.querySelectorAll('[data-coach-prompt]').forEach(function(b){b.disabled=coachBusy});
+}
+
+function localDayRange(offsetStart,offsetEnd){
+  const end=addDays(today(),offsetEnd);
+  const start=addDays(today(),offsetStart);
+  return records.filter(function(r){return r.date>=iso(start)&&r.date<=iso(end)});
+}
+
+function localWeekRecords(){
+  const s=monday(today()),e=addDays(s,6);
+  return records.filter(function(r){return r.date>=iso(s)&&r.date<=iso(e)});
+}
+
+function localStats(rs){
+  const st=calcStats(rs);
+  const byActivity={};
+  rs.forEach(function(r){
+    const key=r.activity||'other';
+    if(!byActivity[key])byActivity[key]={minutes:0,sessions:0,score:0};
+    byActivity[key].minutes+=Number(r.minutes||0);
+    byActivity[key].sessions++;
+    byActivity[key].score+=recordScore(r);
+  });
+  return Object.assign({},st,{byActivity:byActivity});
+}
+
+function localTopActivities(rs){
+  return Object.entries(localStats(rs).byActivity)
+    .sort(function(a,b){return b[1].minutes-a[1].minutes})
+    .slice(0,3)
+    .map(function(x){return activityName(x[0])+' '+x[1].minutes+'분'})
+    .join(' · ');
+}
+
+function localLastRecord(){
+  return [...records].sort(function(a,b){return b.date.localeCompare(a.date)||Number(b.id)-Number(a.id)})[0]||null;
+}
+
+function localCoachReply(question){
+  const q=String(question||'').toLowerCase().trim();
+  if(!records.length){
+    return '아직 저장된 운동 기록이 없습니다. 먼저 위의 「AI 운동 기록」이나 일반 기록 추가에서 운동을 저장해 주세요.';
+  }
+
+  const goal=Math.max(1,Number(settings.weeklyGoal)||150);
+  const week=localWeekRecords();
+  const ws=localStats(week);
+  const recent=localDayRange(-6,0);
+  const rs=localStats(recent);
+  const last=localLastRecord();
+
+  if(/이번 주|금주|주간|이번주/.test(q)){
+    const remain=Math.max(0,goal-ws.score);
+    let reply='이번 주 기록은 환산 '+ws.score+'점입니다. 주간 목표 '+goal+'점 기준으로 '+(remain?remain+'점이 더 필요합니다.':'목표를 달성했습니다.');
+    reply+='\n\n중강도 '+ws.mod+'분 · 고강도 '+ws.vig+'분 · 운동한 날 '+ws.days+'일 · 세션 '+ws.sessions+'회';
+    if(ws.sessions)reply+='\n주로 한 운동: '+localTopActivities(week);
+    return reply;
+  }
+
+  if(/오늘.*운동|오늘.*해야|오늘.*뭐|오늘/.test(q)){
+    const todayRs=records.filter(function(r){return r.date===iso(today())});
+    const ts=localStats(todayRs);
+    if(todayRs.length){
+      return '오늘은 '+ts.sessions+'회 기록되어 있고 총 '+(ts.mod+ts.vig+ts.light)+'분입니다. 환산량은 '+ts.score+'점입니다.\n\n최근 7일은 '+rs.sessions+'회, 환산 '+rs.score+'점입니다. 오늘 기록과 최근 패턴을 같이 보고 다음 운동을 잡는 게 좋습니다.';
+    }
+    const gap=Math.max(0,goal-ws.score);
+    return '오늘은 아직 기록이 없습니다. 이번 주 누적은 '+ws.score+'점'+(gap?' (목표까지 '+gap+'점)':' · 목표 달성')+'.\n\n최근 기록: '+(localTopActivities(recent)||'없음')+'\n최근에 적게 한 운동을 골라 기록해보세요.';
+  }
+
+  if(/다음 운동|뭐 하지|뭐할까|운동 추천|추천/.test(q)){
+    const strength=recent.filter(function(r){return r.activity==='strength'}).length;
+    const cardio=recent.filter(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)}).length;
+    const lastDays=last?Math.round((today()-new Date(last.date+'T00:00:00'))/86400000):999;
+    let pick='근력운동 20~30분';
+    if(strength===0)pick='근력운동 20~30분';
+    else if(cardio===0)pick='파워워킹이나 걷기 30~40분';
+    else if(last&&last.activity==='strength'&&lastDays<=1)pick='걷기/파워워킹 20~40분';
+    else if(last&&['run','interval','stairs'].includes(last.activity)&&lastDays<=1)pick='가벼운 걷기 20~30분';
+    return '최근 7일 기록을 보면 '+pick+'을 다음 운동 후보로 잡기 좋습니다.\n\n최근 7일: '+rs.sessions+'회 · 환산 '+rs.score+'점 · 운동한 날 '+rs.days+'일\n가장 많이 한 운동: '+(localTopActivities(recent)||'없음');
+  }
+
+  if(/근력|스쿼트|런지|덤벨|점진|세트/.test(q)){
+    const sr=records.filter(function(r){return r.activity==='strength'}).sort(function(a,b){return a.date.localeCompare(b.date)||Number(a.id)-Number(b.id)});
+    if(!sr.length)return '저장된 근력운동 기록이 아직 없습니다.';
+    const lastStrength=sr[sr.length-1];
+    const sets=sr.map(function(r){return Number(r.sets||0)}).filter(Boolean);
+    const maxSets=sets.length?Math.max.apply(null,sets):null;
+    const recentText=sr.slice(-5).map(function(r){return fmtDate(r.date)+' '+r.minutes+'분'+(r.sets?' · '+r.sets+'세트':'')}).join(' / ');
+    return '근력운동 기록은 총 '+sr.length+'회입니다. 최근 기록은 '+fmtDate(lastStrength.date)+' · '+lastStrength.minutes+'분'+(lastStrength.sets?' · '+lastStrength.sets+'세트':'')+'.'+(maxSets?'\n기록된 최대 세트 수: '+maxSets+'세트':'')+'\n\n최근 5회: '+recentText+'\n\n세트 수나 반복 수를 실제 수행 가능한 범위에서 조금씩 늘리고, 이전 운동보다 같은 동작의 수행량이 유지·증가하는지를 기록으로 확인하는 방식이 좋습니다.';
+  }
+
+  if(/최근|패턴|부족|문제|균형/.test(q)){
+    const recentText=localTopActivities(recent)||'없음';
+    let reply='최근 7일은 '+rs.sessions+'회 운동했고 환산량은 '+rs.score+'점입니다. 운동한 날은 '+rs.days+'일입니다.\n\n주요 기록: '+recentText;
+    const gap=7-rs.days;
+    if(gap>0)reply+='\n운동하지 않은 날: '+gap+'일';
+    const hasStrength=recent.some(function(r){return r.activity==='strength'});
+    const hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
+    if(!hasStrength)reply+='\n근력운동 기록이 최근 7일에 없습니다.';
+    if(!hasCardio)reply+='\n걷기·러닝·자전거 등 유산소 기록이 최근 7일에 없습니다.';
+    return reply;
+  }
+
+  return '현재 저장된 기록 기준으로 보면, 이번 주 환산량은 '+ws.score+'점이고 목표는 '+goal+'점입니다. '+(ws.score>=goal?'목표를 달성했습니다.':'목표까지 '+(goal-ws.score)+'점 남았습니다.')+'\n\n질문을 조금 더 구체적으로 해보세요. 예: 「이번 주 운동량 어때?」, 「다음 운동 뭐 하지?」, 「근력운동 진행 상황 봐줘」';
 }
 
 async function sendCoachMessage(prefill){
   const input=$('coachInput');
   const text=String(prefill??input?.value??'').trim();
-  if(!text)return;
-  if(!currentUser||!supabaseClient){showToast('GPT 코치는 로그인 후 사용할 수 있습니다.');return}
-  if(coachBusy)return;
+  if(!text||coachBusy)return;
+
   coachBusy=true;
   if(input)input.value='';
   coachMessages.push({role:'user',content:text});
-  saveCoachChat();renderCoachChat();setCoachUi();
+  saveCoachChat();
+  renderCoachChat();
+  setCoachUi();
 
   const box=$('coachMessages');
   const typing=document.createElement('div');
   typing.className='chat-typing';
-  typing.innerHTML='<span class="typing-dot"></span> GPT가 기록을 보고 있습니다…';
-  box.appendChild(typing);box.scrollTop=box.scrollHeight;
+  typing.innerHTML='<span class="typing-dot"></span> 기록을 계산하고 있습니다…';
+  box.appendChild(typing);
+  box.scrollTop=box.scrollHeight;
 
   try{
-    const {data,error}=await supabaseClient.functions.invoke('ai-exercise-parser',{
-      body:{
-        mode:'chat',
-        messages:coachMessages.slice(-10),
-        weeklyGoal:Number(settings.weeklyGoal)||150,
-        today:iso(today())
-      }
-    });
-    if(error)throw error;
-    const reply=String(data?.reply||'').trim();
-    if(!reply)throw new Error('GPT 응답이 비어 있습니다.');
+    await new Promise(function(resolve){setTimeout(resolve,180)});
+    const reply=localCoachReply(text);
     coachMessages.push({role:'assistant',content:reply});
     saveCoachChat();
   }catch(error){
-    console.error('GPT 코치 실패:',error);
-    let detail=error?.message||'알 수 없는 오류';
-    try{
-      const ctx=error?.context;
-      if(ctx&&typeof ctx.clone==='function'){
-        const body=await ctx.clone().text();
-        if(body)detail+='\n\n응답 본문: '+body.slice(0,1800);
-        const code=ctx.headers?.get?.('sb-error-code');
-        if(code)detail+='\n\nSupabase 오류 코드: '+code;
-      }
-    }catch(debugError){
-      console.warn('GPT 코치 오류 본문 읽기 실패:',debugError);
-    }
-    coachMessages.push({role:'assistant',content:'GPT 코치 연결 오류\n\n'+detail});
+    console.error('무료 운동 코치 실패:',error);
+    coachMessages.push({role:'assistant',content:'기록 분석 중 오류가 발생했습니다. 저장된 기록을 확인해 주세요.'});
     saveCoachChat();
-    showToast('GPT 코치 연결 실패 · 상세 오류 표시');
   }finally{
     coachBusy=false;
-    renderCoachChat();setCoachUi();
+    renderCoachChat();
+    setCoachUi();
   }
 }
 
-$('coachSend').addEventListener('click',()=>sendCoachMessage());
-$('coachInput').addEventListener('keydown',e=>{
+$('coachSend').addEventListener('click',function(){sendCoachMessage()});
+$('coachInput').addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCoachMessage()}
 });
-document.querySelectorAll('[data-coach-prompt]').forEach(b=>b.addEventListener('click',()=>sendCoachMessage(b.dataset.coachPrompt)));
-loadCoachChat();setCoachUi();
+document.querySelectorAll('[data-coach-prompt]').forEach(function(b){
+  b.addEventListener('click',function(){sendCoachMessage(b.dataset.coachPrompt)});
+});
+loadCoachChat();
+setCoachUi();
 
 async function parseSmartTextWithAI(text){
-  if(!currentUser||!supabaseClient)return null;
-  try{
-    const {data,error}=await supabaseClient.functions.invoke('ai-exercise-parser',{body:{text:String(text||'')}});
-    if(error)throw error;
-    return data?.result||data||null;
-  }catch(error){console.warn('AI 분석 실패, 로컬 판별로 전환:',error);return null}
+  return null;
 }
 function parseSmartText(text){
   const raw=String(text||'').trim();if(!raw)return null;const t=raw.toLowerCase();
