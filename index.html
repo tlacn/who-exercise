@@ -69,7 +69,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.8</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.9</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -898,7 +898,7 @@ function localCoachReply(question){
     return '기록된 최대 세트 수는 '+x.sets+'세트입니다. '+fmtDate(x.date)+' · '+x.minutes+'분 · '+(x.label||activityName(x.activity));
   }
 
-  if(/최근.*운동|마지막.*운동|마지막으로|최근 기록/.test(q)){
+  if(/최근.*운동|마지막.*운동|마지막으로|최근 기록/.test(q)&&!/(패턴|부족|균형|편중|추세|트렌드|흐름)/.test(q)){
     const x=mostRecent(filtered.length?filtered:records);
     if(!x)return'기록이 없습니다.';
     return '가장 최근 기록은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분 · '+intensityLabel(x.intensity)+'입니다.';
@@ -910,11 +910,22 @@ function localCoachReply(question){
   }
 
   if(/부족|균형|골고루|편중|패턴/.test(q)){
-    const recent=recordsInRange(rangeInfo('7d')),summary=sortedActivitySummary(recent),hasStrength=recent.some(function(r){return r.activity==='strength'}),hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
-    let reply='최근 7일은 '+formatRangeStats(recent)+'입니다.\\n주요 운동: '+(topActivityText(recent,3)||'없음');
-    if(!hasStrength)reply+='\\n근력운동 기록이 없습니다.';
-    if(!hasCardio)reply+='\\n유산소 기록이 없습니다.';
-    if(summary.length===1)reply+='\\n최근 기록이 한 종류의 운동에 집중되어 있습니다.';
+    const recent=recordsInRange(rangeInfo('7d'));
+    const summary=sortedActivitySummary(recent);
+    const hasStrength=recent.some(function(r){return r.activity==='strength'});
+    const hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
+    const hasVigorous=recent.some(function(r){return r.intensity==='vigorous'});
+    const days=recordDays(recent).length;
+    const reply=[
+      '최근 7일: '+formatRangeStats(recent),
+      '주요 운동: '+(topActivityText(recent,3)||'없음'),
+      '',
+      '부족한 부분:',
+      (!hasStrength?'① 근력운동 기록이 없습니다.':'① 근력운동 기록은 있습니다.'),
+      (!hasCardio?'② 유산소 기록이 없습니다.':'② 유산소 기록은 있습니다.'),
+      (!hasVigorous?'③ 최근 7일에는 고강도 기록이 없습니다.':'③ 최근 7일에 고강도 기록이 있습니다.'),
+      (days<=2?'④ 운동한 날이 '+days+'일이라 빈도가 낮은 편입니다.':'④ 운동한 날이 '+days+'일입니다.')
+    ].join('\\n');
     return reply;
   }
 
@@ -932,6 +943,10 @@ function localCoachReply(question){
   if(/기록.*(찾|검색)|있어|했어|했나/.test(q)){
     if(activity)return range.label+'에 '+activityName(activity)+' 기록은 '+filtered.length+'회 있습니다.'+(filtered.length?' 합계 '+totalMinutes(filtered)+'분입니다.':'');
     const x=mostRecent(rs);return x?range.label+'에 기록이 있습니다. 최근은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+'입니다.':'해당 기간 기록이 없습니다.';
+  }
+
+  if(/^(머해|뭐해|뭐 함|뭐함|도와줘|뭐 물어봐|무슨 질문)/.test(q)){
+    return '지금은 내 운동 기록을 계산해서 답하는 무료 운동 코치입니다.\\n\\n이번 주 운동량, 최근 패턴, 운동 횟수, 운동 종류별 시간, 지난주와 비교, 가장 빠른 페이스, 근력운동 세트, 다음 운동 추천 등을 물어볼 수 있습니다.';
   }
 
   const x=mostRecent(records);
