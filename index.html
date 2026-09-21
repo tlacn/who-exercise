@@ -14,11 +14,6 @@
 .add-card{margin-top:14px}.exercise-form{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;align-items:start}.field{min-width:0}.field-action{display:flex;align-items:flex-end}.field-action button{width:100%;height:44px}.field-full{grid-column:1/-1}label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px;line-height:1.3}input,select{display:block;width:100%;max-width:100%;height:44px;padding:0 12px;border-radius:12px;border:1px solid #d9dee8;background:#fff;color:var(--text);outline:none;min-width:0}
 /* iPhone Safari native date control can exceed its grid cell */
 input[type='date']{display:block;width:100%!important;min-width:0!important;max-width:100%!important;-webkit-appearance:none;appearance:none;font-size:16px;line-height:44px;padding:0 12px!important;overflow:hidden}input[type='date']::-webkit-date-and-time-value{min-width:0;text-align:left}input[type='date']::-webkit-calendar-picker-indicator{margin:0 0 0 auto}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}input::placeholder{color:#a3acbb}.pace-row{display:flex;align-items:center;gap:8px;height:44px}.pace-row input{flex:1}.pace-unit{font-size:13px;color:var(--muted);white-space:nowrap}.pace-meta{min-height:18px;display:flex;align-items:center;gap:8px;margin-top:6px}.pace-helper{font-size:11px;color:var(--muted);line-height:1.45}.typing-indicator{display:none;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:#eff6ff;color:var(--accent);font-size:10px;font-weight:800;white-space:nowrap}.typing-indicator.show{display:inline-flex}.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.35)}70%{box-shadow:0 0 0 5px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}.pace-active{border-color:var(--accent)!important;box-shadow:0 0 0 4px rgba(37,99,235,.13)!important}.pace-has-value{border-color:#7da1f8}.result{margin-top:13px;padding:12px 13px;border-radius:13px;background:#f7f9fc;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.result .big{font-weight:800;line-height:1.45}.badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:850;white-space:nowrap}.badge.mod{background:#eff6ff;color:#1d4ed8}.badge.vig{background:#f5f3ff;color:#6d28d9}.badge.light{background:#f1f5f9;color:#64748b}.badge.uncertain{background:#fff7ed;color:var(--warn)}.help{font-size:11px;color:var(--muted);line-height:1.55;margin-top:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{min-height:44px;padding:0 15px;border:0;border-radius:12px;background:var(--text);color:#fff;font-weight:800}.btn.secondary{background:#eef2f7;color:var(--text)}.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}.btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}.btn.small{min-height:34px;height:34px;padding:0 10px;border-radius:9px;font-size:11px}.btn:disabled{opacity:.5;cursor:not-allowed}.input-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
-/* 생활활동 */
-.activity-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
-.quick-preset{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.quick-preset button{min-height:32px;height:32px;padding:0 9px;border-radius:9px;font-size:10px;background:#f1f5f9;color:var(--text);border:1px solid var(--line);font-weight:800}
-.quick-preset button.active{background:#eff6ff;color:#1d4ed8;border-color:#9bb8ff}
 /* interval */
 .interval-box{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfcfe}.interval-box.show{display:block}.compact,.interval-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.interval-title{font-size:12px;font-weight:850;margin-bottom:10px}.interval-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
 /* period */
@@ -71,7 +66,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <div class="section-title"><h2>운동 기록 추가</h2><span class="tiny">현재 주에 자동 반영</span></div>
     <form id="form" class="exercise-form">
       <div class="field"><label for="date">날짜</label><input id="date" type="date" required></div>
-      <div class="field"><label for="activity">운동 종류</label><select id="activity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="interval">인터벌</option></select></div>
+      <div class="field"><label for="activity">운동 종류</label><select id="activity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="interval">인터벌</option></select></div>
       <div class="field pace-box" id="paceWrap">
         <label for="pace">페이스</label>
         <div class="pace-row"><input id="pace" type="text" inputmode="text" autocomplete="off" placeholder="08:00" maxlength="6"><span class="pace-unit">/km</span></div>
@@ -89,7 +84,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     </div>
     <div class="result" id="estimateBox"><div><div class="tiny">자동 추정</div><div class="big" id="estimateText">페이스를 입력하세요</div></div><span class="badge uncertain" id="estimateBadge">대기</span></div>
     <div class="input-note">페이스는 <b>분:초 / km</b>로 입력합니다. 예: <b>08:00</b> → <b>7.5 km/h</b>.</div>
-    <div class="help">운동뿐 아니라 청소·정리·매트 이동 같은 생활활동도 기록할 수 있습니다. 생활활동은 2024 Adult Compendium의 유사 가사활동 MET를 참고한 대략적인 값입니다. 강도는 활동 종류와 속도를 바탕으로 한 기록용 추정치이며 실제 강도는 작업량·휴식·환경 등에 따라 달라질 수 있습니다.</div>
+    <div class="help">강도는 활동 종류와 속도를 바탕으로 한 기록용 추정치입니다. 실제 강도는 경사·지면·체력·심박 등에 따라 달라질 수 있습니다.</div>
     <div class="actions"><button class="btn secondary" type="button" id="todayBtn">오늘 날짜</button><button class="btn secondary" type="button" id="exportBtn">백업</button><button class="btn secondary" type="button" id="importBtn">복원</button><input id="restoreFile" type="file" accept="application/json,.json" class="hidden"><button class="btn danger" type="button" id="clearBtn">전체 삭제</button></div>
   </section>
 
@@ -108,7 +103,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 
   <section class="card records-card">
     <div class="section-title"><h2>저장된 전체 기록</h2><span class="tiny" id="recordCount">0개</span></div>
-    <div class="record-toolbar"><input id="recordSearch" type="search" placeholder="검색: 러닝, 파워워킹…"><select id="recordActivity"><option value="all">모든 운동</option><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="interval">인터벌</option></select><select id="recordIntensity"><option value="all">모든 강도</option><option value="moderate">중강도</option><option value="vigorous">고강도</option><option value="light">저강도</option></select><select id="recordSort"><option value="new">최신순</option><option value="old">오래된순</option></select></div>
+    <div class="record-toolbar"><input id="recordSearch" type="search" placeholder="검색: 러닝, 파워워킹…"><select id="recordActivity"><option value="all">모든 운동</option><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="interval">인터벌</option></select><select id="recordIntensity"><option value="all">모든 강도</option><option value="moderate">중강도</option><option value="vigorous">고강도</option><option value="light">저강도</option></select><select id="recordSort"><option value="new">최신순</option><option value="old">오래된순</option></select></div>
     <div id="records"></div><div class="pagination" id="pagination"></div>
   </section>
 
@@ -132,7 +127,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <h3>운동 기록 수정</h3>
     <div class="modal-grid">
       <div><label for="editDate">날짜</label><input id="editDate" type="date"></div>
-      <div><label for="editActivity">운동 종류</label><select id="editActivity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="interval">인터벌</option></select></div>
+      <div><label for="editActivity">운동 종류</label><select id="editActivity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="interval">인터벌</option></select></div>
       <div><label for="editMinutes">시간(분)</label><input id="editMinutes" type="number" min="1" step="1"></div>
       <div><label for="editIntensity">강도</label><select id="editIntensity"><option value="moderate">중강도</option><option value="vigorous">고강도</option><option value="light">저강도</option></select></div>
       <div class="field-full"><label for="editPace">페이스(선택)</label><input id="editPace" type="text" inputmode="text" placeholder="08:00"></div>
@@ -227,12 +222,6 @@ function interpolate(points,speed){
   }
   return points[points.length-1][1];
 }
-const houseworkProfiles={
-  mixed:{met:3.3,label:'집안 정리·청소 혼합',note:'청소·정리·바닥 작업 등이 섞인 경우'},
-  moving:{met:5.0,label:'매트·가구 이동/정리',note:'매트·가구·생활용품을 반복해서 옮기는 경우'},
-  carrying:{met:5.8,label:'물건 운반·무거운 정리',note:'박스·가구 등 물건을 들고 옮기는 경우'},
-  light:{met:2.5,label:'가벼운 집안일',note:'정리·정돈 위주의 가벼운 작업'}
-};
 const paceProfiles={
   powerwalk:{name:'파워워킹',points:[[4.5,3.5],[5.6,4.3],[6.4,5.0],[7.2,7.0],[8.0,8.0]]},
   walk:{name:'걷기',points:[[3.2,2.8],[4.0,3.0],[4.5,3.5],[5.6,4.3],[6.4,5.0],[7.2,7.0]]},
@@ -247,9 +236,6 @@ function getManualDetail(activity){
   }
   if(activity==='cycle'){
     const m={easy:{met:4,label:'자전거 · 가볍게'},mod:{met:6.8,label:'자전거 · 중간'},hard:{met:9.3,label:'자전거 · 강하게'}};return m[$('cycleIntensity').value];
-  }
-  if(activity==='housework'){
-    return houseworkProfiles[$('houseworkType').value];
   }
   return null;
 }
@@ -271,10 +257,6 @@ function setupActivity(){
   if(activity==='stairs'){
     $('detailWrap').innerHTML='<label for="stairsIntensity">속도/강도</label><select id="stairsIntensity"><option value="slow">느리게 · 약 4.0 MET</option><option value="general">보통 · 약 8.0 MET</option><option value="fast">빠르게 · 약 8.8 MET</option></select>';
     $('stairsIntensity').addEventListener('change',updateEstimate);
-  }else if(activity==='housework'){
-    $('detailWrap').innerHTML=`<label for="houseworkType">활동 내용</label><select id="houseworkType"><option value="mixed">집안 정리·청소 혼합 · 약 3.3 MET</option><option value="moving">매트·가구 이동/정리 · 약 5.0 MET</option><option value="carrying">물건 운반·무거운 정리 · 약 5.8 MET</option><option value="light">가벼운 집안일 · 약 2.5 MET</option></select><div class="activity-note" id="houseworkNote">청소·정리·바닥 작업 등이 섞인 경우</div><div class="quick-preset"><button type="button" data-housework="mixed">혼합 청소</button><button type="button" data-housework="moving">매트/가구 이동</button><button type="button" data-housework="carrying">물건 운반</button></div>`;
-    $('houseworkType').addEventListener('change',()=>{ $('houseworkNote').textContent=houseworkProfiles[$('houseworkType').value].note; updateEstimate(); });
-    detailWrap.querySelectorAll('[data-housework]').forEach(btn=>btn.addEventListener('click',()=>{ $('houseworkType').value=btn.dataset.housework; $('houseworkNote').textContent=houseworkProfiles[btn.dataset.housework].note; updateEstimate(); detailWrap.querySelectorAll('[data-housework]').forEach(b=>b.classList.toggle('active',b===btn)); }));
   }else if(activity==='cycle'){
     $('detailWrap').innerHTML='<label for="cycleIntensity">강도</label><select id="cycleIntensity"><option value="easy">가볍게 · 약 4.0 MET</option><option value="mod">중간 · 약 6.8 MET</option><option value="hard">강하게 · 약 9.3 MET</option></select>';
     $('cycleIntensity').addEventListener('change',updateEstimate);
@@ -304,7 +286,7 @@ function updateIntervalPreview(){
 function addRecord(obj){records.push({id:Date.now()+Math.random(),...obj});persist()}
 function removeRecord(id){records=records.filter(r=>String(r.id)!==String(id));persist()}
 function persist(){localStorage.setItem(KEY,JSON.stringify(records));renderAll()}
-function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',interval:'인터벌',housework:'생활활동/집안일',other:'기타'}[a]||a||'기타')}
+function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',interval:'인터벌',other:'기타'}[a]||a||'기타')}
 function intensityLabel(i){return i==='moderate'?'중강도':i==='vigorous'?'고강도':'저강도'}
 function intensityClass(i){return i==='moderate'?'mod':i==='vigorous'?'vig':'light'}
 function recordScore(r){return r.intensity==='vigorous'?Number(r.minutes||0)*2:r.intensity==='moderate'?Number(r.minutes||0):0}
@@ -403,12 +385,12 @@ function renderDashboard(){
 ========================================================= */
 let editingId=null;
 function openEdit(id){
-  const r=records.find(x=>String(x.id)===String(id));if(!r)return;editingId=id;$('editDate').value=r.date||iso(today());$('editActivity').value=['powerwalk','walk','run','stairs','cycle','hiking','housework','interval'].includes(r.activity)?r.activity:'powerwalk';$('editMinutes').value=r.minutes||'';$('editIntensity').value=r.intensity||'moderate';$('editPace').value=r.pace?String(r.pace).replace('/km',''):'';$('editBackdrop').classList.add('show');
+  const r=records.find(x=>String(x.id)===String(id));if(!r)return;editingId=id;$('editDate').value=r.date||iso(today());$('editActivity').value=['powerwalk','walk','run','stairs','cycle','hiking','interval'].includes(r.activity)?r.activity:'powerwalk';$('editMinutes').value=r.minutes||'';$('editIntensity').value=r.intensity||'moderate';$('editPace').value=r.pace?String(r.pace).replace('/km',''):'';$('editBackdrop').classList.add('show');
 }
 function closeEdit(){editingId=null;$('editBackdrop').classList.remove('show')}
 function saveEdit(){
   if(editingId==null)return;const r=records.find(x=>String(x.id)===String(editingId));if(!r)return;const minutes=Number($('editMinutes').value);if(!minutes||minutes<1){alert('시간을 확인하세요.');return}
-  const activity=$('editActivity').value;const paceRaw=$('editPace').value;const e=['powerwalk','walk','run','hiking'].includes(activity)?estimatePace(activity,paceRaw):null;r.date=$('editDate').value;r.activity=activity;r.minutes=minutes;r.intensity=$('editIntensity').value;r.pace=e?paceText(e.sec):null;r.speedKmh=e?e.speed:null;r.met=e?e.met:(activity==='housework'?3.3:(r.met||3));r.label=e?`${paceProfiles[activity].name} · ${paceText(e.sec)}`:activityName(activity);closeEdit();persist();
+  const activity=$('editActivity').value;const paceRaw=$('editPace').value;const e=['powerwalk','walk','run','hiking'].includes(activity)?estimatePace(activity,paceRaw):null;r.date=$('editDate').value;r.activity=activity;r.minutes=minutes;r.intensity=$('editIntensity').value;r.pace=e?paceText(e.sec):null;r.speedKmh=e?e.speed:null;r.met=e?e.met:(r.met||3);r.label=e?`${paceProfiles[activity].name} · ${paceText(e.sec)}`:activityName(activity);closeEdit();persist();
 }
 
 /* =========================================================
