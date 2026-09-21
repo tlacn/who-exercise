@@ -69,7 +69,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.11</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.12</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -853,37 +853,112 @@ function strengthRecordInfo(r){
 function strengthProgressReply(q){
   const all=records.filter(function(r){return r.activity==='strength'});
   if(!all.length)return'저장된 근력운동 기록이 없습니다.';
-  const range=questionRange(q);
-  const inRange=all.filter(function(r){return r.date>=localDateKey(range.start)&&r.date<=localDateKey(range.end)});
-  const source=inRange.length?inRange:all;
-  const ordered=source.slice().sort(function(a,b){return a.date.localeCompare(b.date)||Number(a.id)-Number(b.id)});
-  const recent=ordered.slice(-6);
+
+  const explicitPeriod=/(오늘|어제|그제|이번\s*주|지난\s*주|저번\s*주|이번\s*달|지난\s*달|저번\s*달|최근\s*7\s*일|최근\s*30\s*일|올해|작년|20\d{2}\s*[년.\-\/]\s*\d{1,2}\s*[월.\-\/]\s*\d{1,2}|\d{1,2}\s*[월.\-\/]\s*\d{1,2})/.test(q);
+  const range=explicitPeriod?questionRange(q):(/최근|요즘|근래/.test(q)?rangeInfo('30d'):questionRange(q));
+  const rangeStart=localDateKey(range.start),rangeEnd=localDateKey(range.end);
+  const inRange=all.filter(function(r){return r.date>=rangeStart&&r.date<=rangeEnd});
+  const source=(inRange.length?inRange:all).slice().sort(function(a,b){return a.date.localeCompare(b.date)||Number(a.id)-Number(b.id)});
+  const recent=source.slice(-8);
   const infos=recent.map(function(r){return Object.assign({record:r},strengthRecordInfo(r))});
-  const maxSets=Math.max.apply(null,infos.map(function(x){return Number(x.sets||0)}));
-  const maxReps=Math.max.apply(null,infos.map(function(x){return Number(x.reps||0)}));
-  const maxWeight=Math.max.apply(null,infos.map(function(x){return Number(x.weightKg||0)}));
+
+  const maxSets=Math.max.apply(null,[0].concat(infos.map(function(x){return Number(x.sets||0)})));
+  const maxReps=Math.max.apply(null,[0].concat(infos.map(function(x){return Number(x.reps||0)})));
+  const maxWeight=Math.max.apply(null,[0].concat(infos.map(function(x){return Number(x.weightKg||0)})));
+
   const exerciseCounts={};
-  infos.forEach(function(x){x.exercises.forEach(function(e){exerciseCounts[e]=(exerciseCounts[e]||0)+1})});
-  const exText=Object.entries(exerciseCounts).sort(function(a,b){return b[1]-a[1]}).map(function(x){return x[0]+' '+x[1]+'회'}).join(' · ');
+  infos.forEach(function(x){
+    x.exercises.forEach(function(e){
+      exerciseCounts[e]=(exerciseCounts[e]||0)+1;
+    });
+  });
+  const exText=Object.entries(exerciseCounts)
+    .sort(function(a,b){return b[1]-a[1]})
+    .map(function(x){return x[0]+' '+x[1]+'회'})
+    .join(' · ');
+
   let reply=(inRange.length?range.label+' 기준 ':'전체 기록 기준 ')+'근력운동 '+source.length+'회입니다.';
-  reply+='\n최근 기록: '+recent.map(function(x){return fmtDate(x.record.date)+' · '+(x.record.minutes||0)+'분'+(x.sets?' · '+x.sets+'세트':'')+(x.reps?' · '+x.reps+'회':'')+(x.weightKg?' · '+x.weightKg+'kg':'')}).join(' / ');
+  reply+='\n최근 기록: '+recent.map(function(x){
+    return fmtDate(x.record.date)+' · '+(x.record.label||'근력운동')+' · '+(x.record.minutes||0)+'분'+
+      (x.sets?' · '+x.sets+'세트':'')+
+      (x.reps?' · '+x.reps+'회':'')+
+      (x.weightKg?' · '+x.weightKg+'kg':'');
+  }).join(' / ');
+
   if(exText)reply+='\n운동 동작: '+exText;
   if(maxSets)reply+='\n기록된 최대 세트: '+maxSets+'세트';
   if(maxReps)reply+='\n기록에서 확인된 최대 반복: '+maxReps+'회';
   if(maxWeight)reply+='\n기록된 최대 중량: '+maxWeight+'kg';
-  reply+='\n\n점진적 증량은 한 번에 크게 올리기보다, 현재 같은 동작의 세트·반복·중량을 기준으로 다음 세션에서 수행량을 조금씩 높이는 방식으로 기록하는 것이 좋습니다.';
+
+  const latest=infos[infos.length-1];
+  const previous=infos.length>1?infos[infos.length-2]:null;
+
+  reply+='\n\n점진적 증가 판단: ';
+  if(latest&&previous&&latest.sets&&previous.sets&&latest.sets>previous.sets){
+    reply+='최근 기록에서 세트 수가 '+previous.sets+'세트 → '+latest.sets+'세트로 증가했습니다. 다음에는 세트를 무조건 더 올리기보다 현재 증가량을 안정적으로 반복 수행하는지를 먼저 확인하세요.';
+  }else if(latest&&latest.weightKg&&previous&&previous.weightKg&&latest.weightKg>previous.weightKg){
+    reply+='최근 기록에서 중량이 '+previous.weightKg+'kg → '+latest.weightKg+'kg로 증가했습니다. 같은 동작의 수행 품질과 반복 수가 유지되는 범위에서 다음 증가를 판단하세요.';
+  }else if(latest&&latest.reps&&previous&&previous.reps&&latest.reps>previous.reps){
+    reply+='최근 기록에서 반복 수가 '+previous.reps+'회 → '+latest.reps+'회로 증가했습니다. 같은 중량에서 목표 반복 범위를 안정적으로 수행한 뒤 다음 증가를 검토하는 방식으로 기록하면 됩니다.';
+  }else{
+    reply+='현재 기록에는 '+(latest?.sets?'세트 수는 있으나 ':'')+(latest?.reps?'반복 수는 있으나 ':'')+(latest?.weightKg?'중량은 있으나 ':'')+'동작별 반복·중량 정보가 충분하지 않아 실제 점진적 증가량을 계산하기 어렵습니다.';
+    reply+='\n다음부터 「스쿼트 3세트 15회, 덤벨 3kg」처럼 동작·세트·반복·중량을 같이 기록하면 코치가 이전 기록과 비교할 수 있습니다.';
+  }
+
   return reply;
 }
-function localRecommend(){
-  const recent=records.filter(function(r){return r.date>=iso(addDays(today(),-6))&&r.date<=iso(today())});
-  const last=mostRecent(records);
-  const strength=recent.filter(function(r){return r.activity==='strength'}).length;
-  const cardio=recent.filter(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)}).length;
-  if(last&&['run','interval','stairs'].includes(last.activity)&&dateGapFromToday(last.date)<=1)return'가벼운 걷기/파워워킹 20~40분';
-  if(strength===0)return'근력운동 20~30분';
-  if(cardio===0)return'파워워킹이나 걷기 30~40분';
-  if(last&&last.activity==='strength'&&dateGapFromToday(last.date)<=1)return'걷기/파워워킹 20~40분';
-  return'근력운동 20~30분';
+
+function buildPatternReply(){
+  const recent=recordsInRange(rangeInfo('7d'));
+  const summary=sortedActivitySummary(recent);
+  const hasStrength=recent.some(function(r){return r.activity==='strength'});
+  const hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
+  const days=recordDays(recent).length;
+  const weeklyScore=totalScore(recent);
+
+  const lines=[
+    '최근 7일: '+formatRangeStats(recent),
+    '주요 운동: '+(topActivityText(recent,3)||'없음'),
+    '',
+    '패턴에서 확인되는 부분:'
+  ];
+
+  if(!hasStrength)lines.push('① 근력운동 기록이 없습니다. WHO 성인 권고에서는 주요 근육군을 대상으로 주 2일 이상 근력운동을 권고합니다.');
+  else lines.push('① 근력운동 기록이 있습니다.');
+
+  if(!hasCardio)lines.push('② 유산소 기록이 없습니다.');
+  else lines.push('② 유산소 기록은 있습니다.');
+
+  if(days<=2)lines.push('③ 최근 7일의 운동이 '+days+'일에 몰려 있습니다. 운동량을 여러 날에 나누는 패턴으로 바꿀 여지가 있습니다.');
+  else lines.push('③ 최근 7일의 운동일은 '+days+'일입니다.');
+
+  if(weeklyScore<150)lines.push('④ 현재 환산량은 150점 미만입니다. 앱의 기본 최소 목표까지 '+(150-weeklyScore)+'점 남았습니다.');
+  else lines.push('④ 기본 최소 목표 150점은 충족했습니다.');
+
+  lines.push('⑤ 고강도 기록은 '+intensityMinutes(recent,'vigorous')+'분입니다. 고강도 자체가 필수인 것은 아니며, 중강도와 고강도를 조합해 주간 권고량을 채울 수 있습니다.');
+  if(summary.length===1)lines.push('⑥ 최근 기록이 한 종류의 활동에 집중되어 있습니다.');
+
+  return lines.join('\n');
+}
+
+function coachPriorityReply(q){
+  /* 가장 구체적인 의도를 먼저 처리합니다. */
+  if(isStrengthIntent(q))return strengthProgressReply(q);
+
+  if(/부족|균형|골고루|편중|패턴/.test(q))return buildPatternReply();
+
+  if(/비교|보다|대비|전주|지난주.*(늘|줄)|이번주.*(늘|줄)|증가|감소|늘었|줄었/.test(q)){
+    let a,b,al,bl;
+    if(/지난달|저번달/.test(q)){
+      a=recordsInRange(rangeInfo('month'));b=recordsInRange(rangeInfo('lastmonth'));al='이번 달';bl='지난달';
+    }else{
+      a=recordsInRange(rangeInfo('week'));b=recordsInRange(rangeInfo('lastweek'));al='이번 주';bl='지난주';
+    }
+    const ds=totalScore(a)-totalScore(b),dm=totalMinutes(a)-totalMinutes(b),dn=recordDays(a).length-recordDays(b).length;
+    return al+' vs '+bl+'\n'+al+': '+formatRangeStats(a)+'\n'+bl+': '+formatRangeStats(b)+'\n\n환산량 '+(ds>=0?'+':'')+ds+'점 · 총 시간 '+(dm>=0?'+':'')+dm+'분 · 운동한 날 '+(dn>=0?'+':'')+dn+'일';
+  }
+
+  return null;
 }
 
 function localCoachReply(question){
@@ -895,14 +970,8 @@ function localCoachReply(question){
   const range=questionRange(q),rs=recordsInRange(range),activity=findActivityFromQuestion(q);
   const filtered=activityRecords(rs,activity);
 
-  /* 비교 */
-  if(/비교|보다|대비|전주|지난주.*(늘|줄)|이번주.*(늘|줄)|증가|감소/.test(q)){
-    let a,b,al,bl;
-    if(/지난달|저번달/.test(q)){a=recordsInRange(rangeInfo('month'));b=recordsInRange(rangeInfo('lastmonth'));al='이번 달';bl='지난달'}
-    else{a=recordsInRange(rangeInfo('week'));b=recordsInRange(rangeInfo('lastweek'));al='이번 주';bl='지난주'}
-    const ds=totalScore(a)-totalScore(b),dm=totalMinutes(a)-totalMinutes(b),dn=recordDays(a).length-recordDays(b).length;
-    return al+' vs '+bl+'\n'+al+': '+formatRangeStats(a)+'\n'+bl+': '+formatRangeStats(b)+'\n\n환산량 '+(ds>=0?'+':'')+ds+'점 · 총 시간 '+(dm>=0?'+':'')+dm+'분 · 운동한 날 '+(dn>=0?'+':'')+dn+'일';
-  }
+  const priority=coachPriorityReply(q);
+  if(priority)return priority;
 
   if(/이번\s*주|금주|주간/.test(q)){
     const remain=Math.max(0,goal-ws);
@@ -964,30 +1033,6 @@ function localCoachReply(question){
     return '최근 6주 환산량: '+s.map(function(x,i){return (i+1)+'주차 '+x.score+'점'}).join(' / ')+'\n\n최근 3개 주의 흐름을 보면 '+(s[s.length-1].score>s[s.length-2].score?'증가':s[s.length-1].score<s[s.length-2].score?'감소':'비슷')+'하고 있습니다.';
   }
 
-  if(/부족|균형|골고루|편중|패턴/.test(q)){
-    const recent=recordsInRange(rangeInfo('7d'));
-    const summary=sortedActivitySummary(recent);
-    const hasStrength=recent.some(function(r){return r.activity==='strength'});
-    const hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
-    const hasVigorous=recent.some(function(r){return r.intensity==='vigorous'});
-    const days=recordDays(recent).length;
-    const reply=[
-      '최근 7일: '+formatRangeStats(recent),
-      '주요 운동: '+(topActivityText(recent,3)||'없음'),
-      '',
-      '부족한 부분:',
-      (!hasStrength?'① 근력운동 기록이 없습니다.':'① 근력운동 기록은 있습니다.'),
-      (!hasCardio?'② 유산소 기록이 없습니다.':'② 유산소 기록은 있습니다.'),
-      (!hasVigorous?'③ 최근 7일에는 고강도 기록이 없습니다.':'③ 최근 7일에 고강도 기록이 있습니다.'),
-      (days<=2?'④ 운동한 날이 '+days+'일이라 빈도가 낮은 편입니다.':'④ 운동한 날이 '+days+'일입니다.')
-    ].join('\n');
-    return reply;
-  }
-
-  if(isStrengthIntent(q)){
-    return strengthProgressReply(q);
-  }
-
   if(/목표|몇 점|얼마 남|달성/.test(q)){
     return '이번 주 환산량은 '+ws+'점, 주간 목표는 '+goal+'점입니다. '+(ws>=goal?'목표를 달성했습니다.':'목표까지 '+(goal-ws)+'점 남았습니다.');
   }
@@ -998,12 +1043,56 @@ function localCoachReply(question){
   }
 
   if(/^(머해|뭐해|뭐 함|뭐함|도와줘|뭐 물어봐|무슨 질문)/.test(q)){
-    return '지금은 내 운동 기록을 계산해서 답하는 무료 운동 코치입니다.\n\n이번 주 운동량, 최근 패턴, 운동 횟수, 운동 종류별 시간, 지난주와 비교, 가장 빠른 페이스, 근력운동 세트, 다음 운동 추천 등을 물어볼 수 있습니다.';
+    return '지금은 내 운동 기록을 계산해서 답하는 무료 운동 코치입니다.\n\n이번 주 운동량, 최근 패턴, 운동 횟수, 운동 종류별 시간, 지난주와 비교, 가장 빠른 페이스, 근력운동 세트·반복·중량, 다음 운동 추천 등을 물어볼 수 있습니다.';
   }
 
   const x=mostRecent(records);
-  return '현재 기록 기준으로 이번 주는 '+ws+'점 / 목표 '+goal+'점입니다.\n최근 기록: '+(x?fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분':'없음')+'\n\n질문 예: 「지난주보다 늘었어?」 「최근 30일 러닝 몇 분 했어?」 「가장 빠른 페이스는?」 「이번 달 운동 몇 번 했어?」';
+  return '현재 기록 기준으로 이번 주는 '+ws+'점 / 목표 '+goal+'점입니다.\n최근 기록: '+(x?fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분':'없음')+'\n\n질문 예: 「지난주보다 늘었어?」 「최근 30일 러닝 몇 분 했어?」 「가장 빠른 페이스는?」 「이번 달 운동 몇 번 했어?」 「최근 근력운동 어떻게 늘려?」';
 }
+
+async function sendCoachMessage(prefill){
+  const input=$('coachInput');
+  const text=String(prefill??input?.value??'').trim();
+  if(!text||coachBusy)return;
+  coachBusy=true;
+  if(input)input.value='';
+  coachMessages.push({role:'user',content:text});
+  saveCoachChat();
+  renderCoachChat();
+  setCoachUi();
+
+  const box=$('coachMessages');
+  const typing=document.createElement('div');
+  typing.className='chat-typing';
+  typing.innerHTML='<span class="typing-dot"></span> 기록을 계산하고 있습니다…';
+  box.appendChild(typing);
+  box.scrollTop=box.scrollHeight;
+
+  try{
+    await new Promise(function(resolve){setTimeout(resolve,120)});
+    const reply=localCoachReply(text);
+    coachMessages.push({role:'assistant',content:reply});
+    saveCoachChat();
+  }catch(error){
+    console.error('무료 운동 코치 실패:',error);
+    coachMessages.push({role:'assistant',content:'기록 분석 중 오류가 발생했습니다. 저장된 기록을 확인해 주세요.'});
+    saveCoachChat();
+  }finally{
+    coachBusy=false;
+    renderCoachChat();
+    setCoachUi();
+  }
+}
+
+$('coachSend').addEventListener('click',function(){sendCoachMessage()});
+$('coachInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCoachMessage()}
+});
+document.querySelectorAll('[data-coach-prompt]').forEach(function(b){
+  b.addEventListener('click',function(){sendCoachMessage(b.dataset.coachPrompt)});
+});
+loadCoachChat();
+setCoachUi();
 
 async function sendCoachMessage(prefill){
   const input=$('coachInput');
