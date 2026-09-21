@@ -38,6 +38,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="wrap">
@@ -184,28 +185,31 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 const SUPABASE_URL = 'https://qrikwaffvunhyvfoeclv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_QhyqWAmqAOOhAyK4a8nF1g_r1OJDoyf';
 
-const supabaseClient = window.supabase.createClient(
+const supabaseClient = window.supabase?.createClient ? window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
-);
+) : null;
 
 let currentUser = null;
 let cloudSyncing=false;
+if(!supabaseClient){
+  console.warn('Supabase JS를 불러오지 못했습니다. 로컬 모드로 실행합니다.');
+}
 function setCloudStatus(message,ok=true){const s=$('cloudStatus'),m=$('cloudMessage');if(s){s.textContent=message;s.style.color=ok?'var(--good)':'var(--bad)'}if(m)m.textContent=message}
 function showCloudLoggedIn(){ $('cloudLoggedOut').classList.add('hidden'); $('cloudLoggedIn').classList.remove('hidden'); $('cloudUserEmail').textContent=currentUser?.email||''; }
 function showCloudLoggedOut(){ $('cloudLoggedOut').classList.remove('hidden'); $('cloudLoggedIn').classList.add('hidden'); setCloudStatus('로그인 필요',false); }
 function dbToRecord(row){return {id:String(row.id),date:row.date,activity:row.activity||'other',intensity:row.intensity||'light',minutes:Number(row.minutes||0),met:row.met!=null?Number(row.met):null,label:row.label||'',pace:row.pace||null,speedKmh:row.speed_kmh!=null?Number(row.speed_kmh):null,note:row.note||'',interval:!!row.interval,segment:row.segment||''}}
 function recordToDb(r){return {id:String(r.id),user_id:currentUser.id,date:r.date,activity:r.activity??null,intensity:r.intensity??null,minutes:Number(r.minutes||0),met:r.met!=null?Number(r.met):null,label:r.label??null,pace:r.pace??null,speed_kmh:r.speedKmh!=null?Number(r.speedKmh):null,note:r.note??null,interval:!!r.interval,segment:r.segment??null}}
-async function cloudUpsert(r){if(!currentUser||!r)return true;const {error}=await supabaseClient.from('exercise_records').upsert(recordToDb(r),{onConflict:'id'});if(error){console.error(error);setCloudStatus('서버 저장 실패: '+error.message,false);return false}return true}
-async function cloudDelete(id){if(!currentUser)return true;const {error}=await supabaseClient.from('exercise_records').delete().eq('id',String(id)).eq('user_id',currentUser.id);if(error){console.error(error);setCloudStatus('서버 삭제 실패: '+error.message,false);return false}return true}
-async function loadCloudRecords(){if(!currentUser)return;cloudSyncing=true;setCloudStatus('☁️ 서버에서 기록 불러오는 중…');const {data,error}=await supabaseClient.from('exercise_records').select('*').eq('user_id',currentUser.id).order('date',{ascending:false});if(error){console.error(error);cloudSyncing=false;setCloudStatus('서버 불러오기 실패: '+error.message,false);return}records=(data||[]).map(dbToRecord);localStorage.setItem(KEY,JSON.stringify(records));cloudSyncing=false;renderAll();setCloudStatus(`☁️ 서버 동기화 완료 · ${records.length}개`)}
-async function uploadAllLocalRecords(showAlert=true){if(!currentUser){if(showAlert)alert('먼저 로그인하세요.');return}if(!records.length){if(showAlert)alert('현재 브라우저에 저장된 기록이 없습니다.');return}cloudSyncing=true;setCloudStatus(`☁️ ${records.length}개 업로드 중…`);const {error}=await supabaseClient.from('exercise_records').upsert(records.map(recordToDb),{onConflict:'id'});cloudSyncing=false;if(error){console.error(error);setCloudStatus('기록 업로드 실패: '+error.message,false);if(showAlert)alert('서버 업로드 실패\n\n'+error.message);return}await loadCloudRecords();if(showAlert)alert('현재 브라우저의 기록을 서버에 저장했습니다.')}
-async function migrateLocalOnLogin(){const local=[...records];const {data,error}=await supabaseClient.from('exercise_records').select('id').eq('user_id',currentUser.id);if(error){setCloudStatus('서버 확인 실패: '+error.message,false);return}const ids=new Set((data||[]).map(x=>String(x.id)));const only=local.filter(r=>!ids.has(String(r.id)));if(only.length){cloudSyncing=true;setCloudStatus(`☁️ 기존 브라우저 기록 ${only.length}개 이전 중…`);const {error:e}=await supabaseClient.from('exercise_records').upsert(only.map(recordToDb),{onConflict:'id'});if(e){console.error(e);setCloudStatus('기존 기록 이전 실패: '+e.message,false);cloudSyncing=false;return}}await loadCloudRecords()}
-async function signIn(){const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password){alert('이메일과 비밀번호를 입력하세요.');return}const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){alert('로그인 실패\n\n'+error.message);return}currentUser=data.user;showCloudLoggedIn();await migrateLocalOnLogin()}
-async function signOut(){await supabaseClient.auth.signOut();currentUser=null;showCloudLoggedOut()}
+async function cloudUpsert(r){if(!supabaseClient||!currentUser||!r)return true;const {error}=await supabaseClient.from('exercise_records').upsert(recordToDb(r),{onConflict:'id'});if(error){console.error(error);setCloudStatus('서버 저장 실패: '+error.message,false);return false}return true}
+async function cloudDelete(id){if(!supabaseClient||!currentUser)return true;const {error}=await supabaseClient.from('exercise_records').delete().eq('id',String(id)).eq('user_id',currentUser.id);if(error){console.error(error);setCloudStatus('서버 삭제 실패: '+error.message,false);return false}return true}
+async function loadCloudRecords(){if(!supabaseClient||!currentUser)return;cloudSyncing=true;setCloudStatus('☁️ 서버에서 기록 불러오는 중…');const {data,error}=await supabaseClient.from('exercise_records').select('*').eq('user_id',currentUser.id).order('date',{ascending:false});if(error){console.error(error);cloudSyncing=false;setCloudStatus('서버 불러오기 실패: '+error.message,false);return}records=(data||[]).map(dbToRecord);localStorage.setItem(KEY,JSON.stringify(records));cloudSyncing=false;renderAll();setCloudStatus(`☁️ 서버 동기화 완료 · ${records.length}개`)}
+async function uploadAllLocalRecords(showAlert=true){if(!supabaseClient){alert('클라우드 모듈을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.');return}if(!currentUser){if(showAlert)alert('먼저 로그인하세요.');return}if(!records.length){if(showAlert)alert('현재 브라우저에 저장된 기록이 없습니다.');return}cloudSyncing=true;setCloudStatus(`☁️ ${records.length}개 업로드 중…`);const {error}=await supabaseClient.from('exercise_records').upsert(records.map(recordToDb),{onConflict:'id'});cloudSyncing=false;if(error){console.error(error);setCloudStatus('기록 업로드 실패: '+error.message,false);if(showAlert)alert('서버 업로드 실패\n\n'+error.message);return}await loadCloudRecords();if(showAlert)alert('현재 브라우저의 기록을 서버에 저장했습니다.')}
+async function migrateLocalOnLogin(){if(!supabaseClient||!currentUser)return;const local=[...records];const {data,error}=await supabaseClient.from('exercise_records').select('id').eq('user_id',currentUser.id);if(error){setCloudStatus('서버 확인 실패: '+error.message,false);return}const ids=new Set((data||[]).map(x=>String(x.id)));const only=local.filter(r=>!ids.has(String(r.id)));if(only.length){cloudSyncing=true;setCloudStatus(`☁️ 기존 브라우저 기록 ${only.length}개 이전 중…`);const {error:e}=await supabaseClient.from('exercise_records').upsert(only.map(recordToDb),{onConflict:'id'});if(e){console.error(e);setCloudStatus('기존 기록 이전 실패: '+e.message,false);cloudSyncing=false;return}}await loadCloudRecords()}
+async function signIn(){if(!supabaseClient){alert('클라우드 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.');return}const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password){alert('이메일과 비밀번호를 입력하세요.');return}const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){alert('로그인 실패\n\n'+error.message);return}currentUser=data.user;showCloudLoggedIn();await migrateLocalOnLogin()}
+async function signOut(){if(!supabaseClient)return;await supabaseClient.auth.signOut();currentUser=null;showCloudLoggedOut()}
 $('signInBtn').addEventListener('click',signIn);$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});$('syncBtn').addEventListener('click',loadCloudRecords);$('uploadLocalBtn').addEventListener('click',()=>uploadAllLocalRecords(true));$('signOutBtn').addEventListener('click',signOut);
-(async()=>{const {data,error}=await supabaseClient.auth.getSession();if(error){setCloudStatus('로그인 상태 확인 실패',false);return}if(data?.session?.user){currentUser=data.session.user;showCloudLoggedIn();await migrateLocalOnLogin()}else showCloudLoggedOut()})();
-supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){currentUser=null;showCloudLoggedOut()}else if(event==='SIGNED_IN'&&session?.user){currentUser=session.user;showCloudLoggedIn();window.setTimeout(()=>migrateLocalOnLogin(),0)}});
+(async()=>{if(!supabaseClient){setCloudStatus('클라우드 모듈 로드 실패 · 로컬 기록 사용',false);return}const {data,error}=await supabaseClient.auth.getSession();if(error){setCloudStatus('로그인 상태 확인 실패',false);return}if(data?.session?.user){currentUser=data.session.user;showCloudLoggedIn();await migrateLocalOnLogin()}else showCloudLoggedOut()})();
+if(supabaseClient) supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){currentUser=null;showCloudLoggedOut()}else if(event==='SIGNED_IN'&&session?.user){currentUser=session.user;showCloudLoggedIn();window.setTimeout(()=>migrateLocalOnLogin(),0)}});
 
 
 /* =========================================================
@@ -363,8 +367,8 @@ function updateIntervalPreview(){
   else{$('estimateText').textContent='빠른 구간 페이스를 입력하세요';$('estimateBadge').textContent='대기';$('estimateBadge').className='badge uncertain'}
 }
 
-function addRecord(obj){records.push({id:Date.now()+Math.random(),...obj});persist()}
-function removeRecord(id){records=records.filter(r=>String(r.id)!==String(id));persist()}
+async function addRecord(obj){const r={id:Date.now()+Math.random(),...obj};records.push(r);persist();if(currentUser&&!cloudSyncing)await cloudUpsert(r);}
+async function removeRecord(id){records=records.filter(r=>String(r.id)!==String(id));persist();if(currentUser&&!cloudSyncing)await cloudDelete(id)}
 function persist(){localStorage.setItem(KEY,JSON.stringify(records));renderAll()}
 function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',interval:'인터벌',housework:'생활활동/집안일',other:'기타'}[a]||a||'기타')}
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[c]))}
