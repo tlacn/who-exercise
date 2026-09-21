@@ -69,7 +69,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.7</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.8</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -662,9 +662,9 @@ function importData(file){
 
 /* =========================================================
    무료 로컬 AI 운동 코치
-   외부 AI API를 사용하지 않고 앱의 실제 기록을 계산해 답합니다.
+   외부 AI API 없이 날짜/기록/강도/운동종류를 해석하여 답합니다.
 ========================================================= */
-const CHAT_KEY_PREFIX='who-exercise-ai-chat-v2-';
+const CHAT_KEY_PREFIX='who-exercise-ai-chat-v3-';
 let coachMessages=[];
 let coachBusy=false;
 
@@ -673,20 +673,20 @@ function chatStorageKey(){return CHAT_KEY_PREFIX+(currentUser?.id||'local')}
 function loadCoachChat(){
   try{
     const saved=JSON.parse(localStorage.getItem(chatStorageKey())||'[]');
-    coachMessages=Array.isArray(saved)?saved.filter(x=>x&&(x.role==='user'||x.role==='assistant')&&x.content).slice(-12):[];
+    coachMessages=Array.isArray(saved)?saved.filter(x=>x&&(x.role==='user'||x.role==='assistant')&&x.content).slice(-16):[];
   }catch(e){coachMessages=[]}
   renderCoachChat();
 }
 
 function saveCoachChat(){
-  coachMessages=coachMessages.slice(-12);
+  coachMessages=coachMessages.slice(-16);
   localStorage.setItem(chatStorageKey(),JSON.stringify(coachMessages));
 }
 
 function renderCoachChat(){
   const box=$('coachMessages');if(!box)return;
   if(!coachMessages.length){
-    box.innerHTML='<div class="chat-empty">내 운동 기록을 바탕으로 질문해보세요.<br>예: 「이번 주 운동량 어때?」 「다음 운동 뭐 하지?」</div>';
+    box.innerHTML='<div class="chat-empty">내 운동 기록을 바탕으로 질문해보세요.<br>예: 「이번 주 운동량 어때?」 「지난주보다 늘었어?」 「가장 많이 한 운동 뭐야?」</div>';
     return;
   }
   box.innerHTML=coachMessages.map(function(m){
@@ -698,124 +698,250 @@ function renderCoachChat(){
 
 function setCoachUi(){
   const status=$('coachStatus'),send=$('coachSend'),input=$('coachInput');
-  if(status){
-    status.textContent='무료 분석 모드';
-    status.className='coach-status ok';
-  }
+  if(status){status.textContent='무료 분석 모드';status.className='coach-status ok'}
   if(send)send.disabled=coachBusy;
-  if(input)input.placeholder='예: 이번 주 운동량 어때?';
+  if(input)input.placeholder='예: 지난주보다 이번 주 운동량 늘었어?';
   document.querySelectorAll('[data-coach-prompt]').forEach(function(b){b.disabled=coachBusy});
 }
 
-function localDayRange(offsetStart,offsetEnd){
-  const end=addDays(today(),offsetEnd);
-  const start=addDays(today(),offsetStart);
-  return records.filter(function(r){return r.date>=iso(start)&&r.date<=iso(end)});
+function localDayStart(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function localDateKey(d){return iso(localDayStart(d))}
+function parseKoreanDate(text){
+  const raw=String(text||'');
+  const base=localDayStart(today());
+  let m;
+  m=raw.match(/(20\d{2})\s*[년.\-\/]\s*(\d{1,2})\s*[월.\-\/]\s*(\d{1,2})/);
+  if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+  m=raw.match(/(\d{1,2})\s*[월.\-\/]\s*(\d{1,2})/);
+  if(m)return new Date(base.getFullYear(),Number(m[1])-1,Number(m[2]));
+  return null;
 }
 
-function localWeekRecords(){
-  const s=monday(today()),e=addDays(s,6);
-  return records.filter(function(r){return r.date>=iso(s)&&r.date<=iso(e)});
+function rangeInfo(kind){
+  const t=localDayStart(today());
+  if(kind==='today')return{start:t,end:t,label:'오늘'};
+  if(kind==='yesterday'){const d=addDays(t,-1);return{start:d,end:d,label:'어제'}};
+  if(kind==='7d')return{start:addDays(t,-6),end:t,label:'최근 7일'};
+  if(kind==='30d')return{start:addDays(t,-29),end:t,label:'최근 30일'};
+  if(kind==='week'){const s=monday(t);return{start:s,end:addDays(s,6),label:'이번 주'}};
+  if(kind==='lastweek'){const s=addDays(monday(t),-7);return{start:s,end:addDays(s,6),label:'지난주'}};
+  if(kind==='month'){const s=new Date(t.getFullYear(),t.getMonth(),1),e=new Date(t.getFullYear(),t.getMonth()+1,0);return{start:s,end:e,label:'이번 달'}};
+  if(kind==='lastmonth'){const s=new Date(t.getFullYear(),t.getMonth()-1,1),e=new Date(t.getFullYear(),t.getMonth(),0);return{start:s,end:e,label:'지난달'}};
+  if(kind==='year'){return{start:new Date(t.getFullYear(),0,1),end:new Date(t.getFullYear(),11,31),label:'올해'}};
+  if(kind==='lastyear'){return{start:new Date(t.getFullYear()-1,0,1),end:new Date(t.getFullYear()-1,11,31),label:'작년'}};
+  return null;
 }
 
-function localStats(rs){
-  const st=calcStats(rs);
-  const byActivity={};
+function questionRange(q){
+  const exact=parseKoreanDate(q);
+  if(exact)return{start:exact,end:exact,label:fmtDate(iso(exact))};
+  if(/오늘/.test(q))return rangeInfo('today');
+  if(/어제/.test(q))return rangeInfo('yesterday');
+  if(/최근\s*30\s*일|지난\s*30\s*일/.test(q))return rangeInfo('30d');
+  if(/최근\s*7\s*일|지난\s*7\s*일/.test(q))return rangeInfo('7d');
+  if(/지난\s*주|저번\s*주/.test(q))return rangeInfo('lastweek');
+  if(/이번\s*주|금주|주간/.test(q))return rangeInfo('week');
+  if(/지난\s*달|저번\s*달/.test(q))return rangeInfo('lastmonth');
+  if(/이번\s*달|금월/.test(q))return rangeInfo('month');
+  if(/작년|지난\s*해/.test(q))return rangeInfo('lastyear');
+  if(/올해|금년/.test(q))return rangeInfo('year');
+  return rangeInfo('week');
+}
+
+function recordsInRange(range){
+  if(!range)return[...records];
+  const a=localDateKey(range.start),b=localDateKey(range.end);
+  return records.filter(function(r){return r.date>=a&&r.date<=b});
+}
+
+function recordDays(rs){return [...new Set(rs.map(function(r){return r.date}))].sort()}
+function totalMinutes(rs){return rs.reduce(function(a,r){return a+Number(r.minutes||0)},0)}
+function totalScore(rs){return rs.reduce(function(a,r){return a+recordScore(r)},0)}
+function intensityMinutes(rs,key){return rs.filter(function(r){return r.intensity===key}).reduce(function(a,r){return a+Number(r.minutes||0)},0)}
+function activitySummary(rs){
+  const map={};
   rs.forEach(function(r){
-    const key=r.activity||'other';
-    if(!byActivity[key])byActivity[key]={minutes:0,sessions:0,score:0};
-    byActivity[key].minutes+=Number(r.minutes||0);
-    byActivity[key].sessions++;
-    byActivity[key].score+=recordScore(r);
+    const k=r.activity||'other';
+    if(!map[k])map[k]={minutes:0,sessions:0,score:0,sets:0};
+    map[k].minutes+=Number(r.minutes||0);
+    map[k].sessions++;
+    map[k].score+=recordScore(r);
+    map[k].sets+=Number(r.sets||0);
   });
-  return Object.assign({},st,{byActivity:byActivity});
+  return map;
 }
-
-function localTopActivities(rs){
-  return Object.entries(localStats(rs).byActivity)
-    .sort(function(a,b){return b[1].minutes-a[1].minutes})
-    .slice(0,3)
-    .map(function(x){return activityName(x[0])+' '+x[1].minutes+'분'})
-    .join(' · ');
+function sortedActivitySummary(rs){
+  return Object.entries(activitySummary(rs)).sort(function(a,b){return b[1].minutes-a[1].minutes})
 }
-
-function localLastRecord(){
-  return [...records].sort(function(a,b){return b.date.localeCompare(a.date)||Number(b.id)-Number(a.id)})[0]||null;
+function topActivityText(rs,limit){
+  return sortedActivitySummary(rs).slice(0,limit||3).map(function(x){return activityName(x[0])+' '+x[1].minutes+'분'}).join(' · ');
+}
+function dateGapFromToday(dateStr){return Math.round((localDayStart(today())-new Date(dateStr+'T00:00:00'))/86400000)}
+function formatRangeStats(rs){
+  return '총 '+totalMinutes(rs)+'분 · 환산 '+totalScore(rs)+'점 · 중강도 '+intensityMinutes(rs,'moderate')+'분 · 고강도 '+intensityMinutes(rs,'vigorous')+'분 · 운동한 날 '+recordDays(rs).length+'일 · 세션 '+rs.length+'회';
+}
+function findActivityFromQuestion(q){
+  if(/파워워킹|파워 워킹/.test(q))return'powerwalk';
+  if(/러닝|달리기|조깅|뛰/.test(q))return'run';
+  if(/걷기|산책/.test(q))return'walk';
+  if(/계단/.test(q))return'stairs';
+  if(/자전거|사이클/.test(q))return'cycle';
+  if(/등산|오르막/.test(q))return'hiking';
+  if(/집안일|청소|세탁|정리|설거지|매트|가구/.test(q))return'housework';
+  if(/근력|스쿼트|런지|푸시업|팔굽혀펴기|플랭크|덤벨|아령|웨이트|풀업|턱걸이/.test(q))return'strength';
+  if(/인터벌/.test(q))return'interval';
+  return null;
+}
+function activityRecords(rs,activity){return activity?rs.filter(function(r){return r.activity===activity}):rs}
+function mostRecent(rs){return [...rs].sort(function(a,b){return b.date.localeCompare(a.date)||Number(b.id)-Number(a.id)})[0]||null}
+function longestRecord(rs){return [...rs].sort(function(a,b){return Number(b.minutes||0)-Number(a.minutes||0)})[0]||null}
+function highestScoreRecord(rs){return [...rs].sort(function(a,b){return recordScore(b)-recordScore(a)})[0]||null}
+function fastestPaceRecord(rs){
+  return rs.filter(function(r){return r.pace&&Number(r.speedKmh)>0})
+    .sort(function(a,b){return Number(b.speedKmh)-Number(a.speedKmh)})[0]||null;
+}
+function maxSetRecord(rs){
+  return rs.filter(function(r){return Number(r.sets)>0})
+    .sort(function(a,b){return Number(b.sets)-Number(a.sets)})[0]||null;
+}
+function weekScoreForDate(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const s=monday(d),e=addDays(s,6);
+  return totalScore(records.filter(function(r){return r.date>=iso(s)&&r.date<=iso(e)}));
+}
+function weeklySeries(count){
+  const out=[];
+  const cur=monday(today());
+  for(let i=count-1;i>=0;i--){
+    const s=addDays(cur,-7*i),e=addDays(s,6);
+    const rs=records.filter(function(r){return r.date>=iso(s)&&r.date<=iso(e)});
+    out.push({start:s,end:e,score:totalScore(rs),minutes:totalMinutes(rs),sessions:rs.length,days:recordDays(rs).length});
+  }
+  return out;
+}
+function localRecommend(){
+  const recent=records.filter(function(r){return r.date>=iso(addDays(today(),-6))&&r.date<=iso(today())});
+  const last=mostRecent(records);
+  const strength=recent.filter(function(r){return r.activity==='strength'}).length;
+  const cardio=recent.filter(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)}).length;
+  if(last&&['run','interval','stairs'].includes(last.activity)&&dateGapFromToday(last.date)<=1)return'가벼운 걷기/파워워킹 20~40분';
+  if(strength===0)return'근력운동 20~30분';
+  if(cardio===0)return'파워워킹이나 걷기 30~40분';
+  if(last&&last.activity==='strength'&&dateGapFromToday(last.date)<=1)return'걷기/파워워킹 20~40분';
+  return'근력운동 20~30분';
 }
 
 function localCoachReply(question){
   const q=String(question||'').toLowerCase().trim();
-  if(!records.length){
-    return '아직 저장된 운동 기록이 없습니다. 먼저 위의 「AI 운동 기록」이나 일반 기록 추가에서 운동을 저장해 주세요.';
-  }
+  if(!records.length)return'아직 저장된 운동 기록이 없습니다. 먼저 운동 기록을 저장해 주세요.';
 
   const goal=Math.max(1,Number(settings.weeklyGoal)||150);
-  const week=localWeekRecords();
-  const ws=localStats(week);
-  const recent=localDayRange(-6,0);
-  const rs=localStats(recent);
-  const last=localLastRecord();
+  const week=rangeInfo('week'),weekRs=recordsInRange(week),ws=totalScore(weekRs);
+  const range=questionRange(q),rs=recordsInRange(range),activity=findActivityFromQuestion(q);
+  const filtered=activityRecords(rs,activity);
 
-  if(/이번 주|금주|주간|이번주/.test(q)){
-    const remain=Math.max(0,goal-ws.score);
-    let reply='이번 주 기록은 환산 '+ws.score+'점입니다. 주간 목표 '+goal+'점 기준으로 '+(remain?remain+'점이 더 필요합니다.':'목표를 달성했습니다.');
-    reply+='\n\n중강도 '+ws.mod+'분 · 고강도 '+ws.vig+'분 · 운동한 날 '+ws.days+'일 · 세션 '+ws.sessions+'회';
-    if(ws.sessions)reply+='\n주로 한 운동: '+localTopActivities(week);
-    return reply;
+  /* 비교 */
+  if(/비교|보다|대비|전주|지난주.*(늘|줄)|이번주.*(늘|줄)|증가|감소/.test(q)){
+    let a,b,al,bl;
+    if(/지난달|저번달/.test(q)){a=recordsInRange(rangeInfo('month'));b=recordsInRange(rangeInfo('lastmonth'));al='이번 달';bl='지난달'}
+    else{a=recordsInRange(rangeInfo('week'));b=recordsInRange(rangeInfo('lastweek'));al='이번 주';bl='지난주'}
+    const ds=totalScore(a)-totalScore(b),dm=totalMinutes(a)-totalMinutes(b),dn=recordDays(a).length-recordDays(b).length;
+    return al+' vs '+bl+'\\n'+al+': '+formatRangeStats(a)+'\\n'+bl+': '+formatRangeStats(b)+'\\n\\n환산량 '+(ds>=0?'+':'')+ds+'점 · 총 시간 '+(dm>=0?'+':'')+dm+'분 · 운동한 날 '+(dn>=0?'+':'')+dn+'일';
   }
 
-  if(/오늘.*운동|오늘.*해야|오늘.*뭐|오늘/.test(q)){
-    const todayRs=records.filter(function(r){return r.date===iso(today())});
-    const ts=localStats(todayRs);
-    if(todayRs.length){
-      return '오늘은 '+ts.sessions+'회 기록되어 있고 총 '+(ts.mod+ts.vig+ts.light)+'분입니다. 환산량은 '+ts.score+'점입니다.\n\n최근 7일은 '+rs.sessions+'회, 환산 '+rs.score+'점입니다. 오늘 기록과 최근 패턴을 같이 보고 다음 운동을 잡는 게 좋습니다.';
-    }
-    const gap=Math.max(0,goal-ws.score);
-    return '오늘은 아직 기록이 없습니다. 이번 주 누적은 '+ws.score+'점'+(gap?' (목표까지 '+gap+'점)':' · 목표 달성')+'.\n\n최근 기록: '+(localTopActivities(recent)||'없음')+'\n최근에 적게 한 운동을 골라 기록해보세요.';
+  if(/이번\s*주|금주|주간/.test(q)){
+    const remain=Math.max(0,goal-ws);
+    return '이번 주 운동량은 '+formatRangeStats(weekRs)+'입니다.\\n\\n주간 목표 '+goal+'점 기준으로 '+(remain?remain+'점 남았습니다.':'목표를 달성했습니다.')+
+      (weekRs.length?'\\n주요 운동: '+topActivityText(weekRs,3):'');
+  }
+
+  if(/오늘.*(운동|해야|뭐|할까)|오늘/.test(q)){
+    const tr=records.filter(function(r){return r.date===iso(today())});
+    if(tr.length)return'오늘 기록은 '+formatRangeStats(tr)+'입니다.\\n'+topActivityText(tr,3);
+    return'오늘은 아직 운동 기록이 없습니다. 현재 이번 주는 '+ws+'점이고 목표까지 '+Math.max(0,goal-ws)+'점입니다.\\n다음 운동 후보: '+localRecommend();
   }
 
   if(/다음 운동|뭐 하지|뭐할까|운동 추천|추천/.test(q)){
-    const strength=recent.filter(function(r){return r.activity==='strength'}).length;
-    const cardio=recent.filter(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)}).length;
-    const lastDays=last?Math.round((today()-new Date(last.date+'T00:00:00'))/86400000):999;
-    let pick='근력운동 20~30분';
-    if(strength===0)pick='근력운동 20~30분';
-    else if(cardio===0)pick='파워워킹이나 걷기 30~40분';
-    else if(last&&last.activity==='strength'&&lastDays<=1)pick='걷기/파워워킹 20~40분';
-    else if(last&&['run','interval','stairs'].includes(last.activity)&&lastDays<=1)pick='가벼운 걷기 20~30분';
-    return '최근 7일 기록을 보면 '+pick+'을 다음 운동 후보로 잡기 좋습니다.\n\n최근 7일: '+rs.sessions+'회 · 환산 '+rs.score+'점 · 운동한 날 '+rs.days+'일\n가장 많이 한 운동: '+(localTopActivities(recent)||'없음');
+    return'다음 운동 후보는 **'+localRecommend()+'**입니다.\\n\\n최근 7일: '+formatRangeStats(recordsInRange(rangeInfo('7d')))+'\\n최근 많이 한 운동: '+(topActivityText(recordsInRange(rangeInfo('7d')),3)||'없음');
+  }
+
+  if(/가장.*(많이|자주)|제일.*(많이|자주)|많이 한|자주 한/.test(q)){
+    const ss=sortedActivitySummary(filtered);
+    if(!ss.length)return'해당 기간에 기록이 없습니다.';
+    const x=ss[0];
+    return (activity?activityName(activity)+' 기준으로 ':'')+range.label+'에 가장 많이 한 운동은 **'+activityName(x[0])+'**입니다. '+x[1].minutes+'분 · '+x[1].sessions+'회 · 환산 '+x[1].score+'점';
+  }
+
+  if(/총.*(몇|몇 분|시간)|몇 분.*했|운동량|얼마나 했/.test(q)){
+    return (activity?activityName(activity)+' · ':'')+range.label+' 기록은 '+formatRangeStats(filtered)+'입니다.'+(filtered.length?'\\n주요 운동: '+topActivityText(filtered,3):'');
+  }
+
+  if(/몇 번|몇회|몇 회|횟수|세션/.test(q)){
+    return range.label+'에 '+(activity?activityName(activity)+' ':'')+'총 '+filtered.length+'회 기록했습니다. 운동한 날은 '+recordDays(filtered).length+'일입니다.';
+  }
+
+  if(/가장 오래|제일 오래|최장|긴 운동/.test(q)){
+    const x=longestRecord(filtered);
+    if(!x)return'해당 기간에 기록이 없습니다.';
+    return range.label+'에서 가장 오래 한 기록은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분입니다.';
+  }
+
+  if(/가장 빠|제일 빠|최고.*속도|빠른.*페이스|베스트.*페이스/.test(q)){
+    const x=fastestPaceRecord(filtered);
+    if(!x)return'해당 기간에 페이스가 저장된 기록이 없습니다.';
+    return range.label+'의 가장 빠른 페이스 기록은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.pace+' · '+Number(x.speedKmh).toFixed(1)+' km/h입니다.';
+  }
+
+  if(/세트.*(최대|가장|몇)|가장.*세트|최다.*세트/.test(q)){
+    const x=maxSetRecord(filtered);
+    if(!x)return'세트 수가 저장된 근력운동 기록이 없습니다.';
+    return '기록된 최대 세트 수는 '+x.sets+'세트입니다. '+fmtDate(x.date)+' · '+x.minutes+'분 · '+(x.label||activityName(x.activity));
+  }
+
+  if(/최근.*운동|마지막.*운동|마지막으로|최근 기록/.test(q)){
+    const x=mostRecent(filtered.length?filtered:records);
+    if(!x)return'기록이 없습니다.';
+    return '가장 최근 기록은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분 · '+intensityLabel(x.intensity)+'입니다.';
+  }
+
+  if(/추세|트렌드|흐름|계속.*늘|계속.*줄|점점/.test(q)){
+    const s=weeklySeries(6);
+    return '최근 6주 환산량: '+s.map(function(x,i){return (i+1)+'주차 '+x.score+'점'}).join(' / ')+'\\n\\n최근 3개 주의 흐름을 보면 '+(s[s.length-1].score>s[s.length-2].score?'증가':s[s.length-1].score<s[s.length-2].score?'감소':'비슷')+'하고 있습니다.';
+  }
+
+  if(/부족|균형|골고루|편중|패턴/.test(q)){
+    const recent=recordsInRange(rangeInfo('7d')),summary=sortedActivitySummary(recent),hasStrength=recent.some(function(r){return r.activity==='strength'}),hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
+    let reply='최근 7일은 '+formatRangeStats(recent)+'입니다.\\n주요 운동: '+(topActivityText(recent,3)||'없음');
+    if(!hasStrength)reply+='\\n근력운동 기록이 없습니다.';
+    if(!hasCardio)reply+='\\n유산소 기록이 없습니다.';
+    if(summary.length===1)reply+='\\n최근 기록이 한 종류의 운동에 집중되어 있습니다.';
+    return reply;
   }
 
   if(/근력|스쿼트|런지|덤벨|점진|세트/.test(q)){
     const sr=records.filter(function(r){return r.activity==='strength'}).sort(function(a,b){return a.date.localeCompare(b.date)||Number(a.id)-Number(b.id)});
-    if(!sr.length)return '저장된 근력운동 기록이 아직 없습니다.';
-    const lastStrength=sr[sr.length-1];
-    const sets=sr.map(function(r){return Number(r.sets||0)}).filter(Boolean);
-    const maxSets=sets.length?Math.max.apply(null,sets):null;
-    const recentText=sr.slice(-5).map(function(r){return fmtDate(r.date)+' '+r.minutes+'분'+(r.sets?' · '+r.sets+'세트':'')}).join(' / ');
-    return '근력운동 기록은 총 '+sr.length+'회입니다. 최근 기록은 '+fmtDate(lastStrength.date)+' · '+lastStrength.minutes+'분'+(lastStrength.sets?' · '+lastStrength.sets+'세트':'')+'.'+(maxSets?'\n기록된 최대 세트 수: '+maxSets+'세트':'')+'\n\n최근 5회: '+recentText+'\n\n세트 수나 반복 수를 실제 수행 가능한 범위에서 조금씩 늘리고, 이전 운동보다 같은 동작의 수행량이 유지·증가하는지를 기록으로 확인하는 방식이 좋습니다.';
+    if(!sr.length)return'저장된 근력운동 기록이 아직 없습니다.';
+    const last=sr[sr.length-1],last5=sr.slice(-5),maxSets=maxSetRecord(sr);
+    return '근력운동은 총 '+sr.length+'회 기록되어 있습니다.\\n최근: '+fmtDate(last.date)+' · '+last.minutes+'분'+(last.sets?' · '+last.sets+'세트':'')+(maxSets?'\\n최대 기록 세트: '+maxSets.sets+'세트':'')+'\\n\\n최근 5회: '+last5.map(function(r){return fmtDate(r.date)+' '+r.minutes+'분'+(r.sets?' '+r.sets+'세트':'')}).join(' / ')+'\\n\\n같은 동작의 세트·반복·중량을 기록하면 다음 운동에서 점진적인 증가 여부를 더 정확하게 추적할 수 있습니다.';
   }
 
-  if(/최근|패턴|부족|문제|균형/.test(q)){
-    const recentText=localTopActivities(recent)||'없음';
-    let reply='최근 7일은 '+rs.sessions+'회 운동했고 환산량은 '+rs.score+'점입니다. 운동한 날은 '+rs.days+'일입니다.\n\n주요 기록: '+recentText;
-    const gap=7-rs.days;
-    if(gap>0)reply+='\n운동하지 않은 날: '+gap+'일';
-    const hasStrength=recent.some(function(r){return r.activity==='strength'});
-    const hasCardio=recent.some(function(r){return ['powerwalk','walk','run','cycle','hiking','stairs','interval'].includes(r.activity)});
-    if(!hasStrength)reply+='\n근력운동 기록이 최근 7일에 없습니다.';
-    if(!hasCardio)reply+='\n걷기·러닝·자전거 등 유산소 기록이 최근 7일에 없습니다.';
-    return reply;
+  if(/목표|몇 점|얼마 남|달성/.test(q)){
+    return '이번 주 환산량은 '+ws+'점, 주간 목표는 '+goal+'점입니다. '+(ws>=goal?'목표를 달성했습니다.':'목표까지 '+(goal-ws)+'점 남았습니다.');
   }
 
-  return '현재 저장된 기록 기준으로 보면, 이번 주 환산량은 '+ws.score+'점이고 목표는 '+goal+'점입니다. '+(ws.score>=goal?'목표를 달성했습니다.':'목표까지 '+(goal-ws.score)+'점 남았습니다.')+'\n\n질문을 조금 더 구체적으로 해보세요. 예: 「이번 주 운동량 어때?」, 「다음 운동 뭐 하지?」, 「근력운동 진행 상황 봐줘」';
+  if(/기록.*(찾|검색)|있어|했어|했나/.test(q)){
+    if(activity)return range.label+'에 '+activityName(activity)+' 기록은 '+filtered.length+'회 있습니다.'+(filtered.length?' 합계 '+totalMinutes(filtered)+'분입니다.':'');
+    const x=mostRecent(rs);return x?range.label+'에 기록이 있습니다. 최근은 '+fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+'입니다.':'해당 기간 기록이 없습니다.';
+  }
+
+  const x=mostRecent(records);
+  return '현재 기록 기준으로 이번 주는 '+ws+'점 / 목표 '+goal+'점입니다.\\n최근 기록: '+(x?fmtDate(x.date)+' · '+(x.label||activityName(x.activity))+' · '+x.minutes+'분':'없음')+'\\n\\n질문 예: 「지난주보다 늘었어?」 「최근 30일 러닝 몇 분 했어?」 「가장 빠른 페이스는?」 「이번 달 운동 몇 번 했어?」';
 }
 
 async function sendCoachMessage(prefill){
   const input=$('coachInput');
   const text=String(prefill??input?.value??'').trim();
   if(!text||coachBusy)return;
-
   coachBusy=true;
   if(input)input.value='';
   coachMessages.push({role:'user',content:text});
@@ -831,7 +957,7 @@ async function sendCoachMessage(prefill){
   box.scrollTop=box.scrollHeight;
 
   try{
-    await new Promise(function(resolve){setTimeout(resolve,180)});
+    await new Promise(function(resolve){setTimeout(resolve,120)});
     const reply=localCoachReply(text);
     coachMessages.push({role:'assistant',content:reply});
     saveCoachChat();
