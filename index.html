@@ -19,6 +19,34 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 .quick-preset{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .quick-preset button{min-height:32px;height:32px;padding:0 9px;border-radius:9px;font-size:10px;background:#f1f5f9;color:var(--text);border:1px solid var(--line);font-weight:800}
 .quick-preset button.active{background:#eff6ff;color:#1d4ed8;border-color:#9bb8ff}
+
+/* AI coach */
+.coach-card{margin-top:14px}
+.coach-header-note{font-size:11px;color:var(--muted);line-height:1.45}
+.coach-status{font-size:10px;font-weight:850;white-space:nowrap}
+.coach-status.ok{color:var(--good)}
+.coach-status.no{color:var(--muted)}
+.chat-shell{border:1px solid var(--line);border-radius:16px;background:#fbfcfe;overflow:hidden}
+.chat-messages{height:330px;overflow:auto;padding:12px}
+.chat-empty{padding:35px 12px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
+.chat-msg{display:flex;margin:8px 0}
+.chat-msg.user{justify-content:flex-end}
+.chat-bubble{max-width:min(86%,680px);padding:9px 11px;border-radius:14px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.chat-msg.assistant .chat-bubble{background:#fff;border:1px solid var(--line)}
+.chat-msg.user .chat-bubble{background:#172033;color:#fff}
+.chat-meta{font-size:9px;color:var(--muted);margin:2px 4px 0}
+.chat-msg.user .chat-meta{text-align:right}
+.chat-compose{display:flex;gap:7px;padding:9px;border-top:1px solid var(--line);background:#fff}
+.chat-compose textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #d9dee8;border-radius:12px;outline:none;color:var(--text);font:inherit;font-size:12px;line-height:1.45}
+.chat-compose textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.chat-send{width:72px;min-width:72px;align-self:stretch}
+.chat-chips{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 0}
+.chat-chip{min-height:30px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:0 9px;font-size:10px;font-weight:800;color:var(--text)}
+.chat-chip:disabled{opacity:.45}
+.chat-typing{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px 4px;padding:5px 8px;border-radius:999px;background:#eff6ff;color:var(--accent);font-size:10px;font-weight:800}
+.chat-typing .typing-dot{width:6px;height:6px}
+@media(max-width:560px){.chat-messages{height:290px}.chat-bubble{max-width:92%}.chat-send{width:64px;min-width:64px}}
+
 /* interval */
 .interval-box{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfcfe}.interval-box.show{display:block}.compact,.interval-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.interval-title{font-size:12px;font-weight:850;margin-bottom:10px}.interval-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
 /* period */
@@ -41,7 +69,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.3</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.4</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -126,6 +154,31 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <div class="actions"><button class="btn secondary" type="button" id="exportBtn">백업</button><button class="btn secondary" type="button" id="importBtn">복원</button><input id="restoreFile" type="file" accept="application/json,.json" class="hidden"><button class="btn danger" type="button" id="clearBtn">전체 삭제</button></div>
   </section>
 
+
+  <section class="card coach-card">
+    <div class="section-title">
+      <div>
+        <h2 style="margin-bottom:4px">🤖 GPT 운동 코치</h2>
+        <div class="coach-header-note">저장된 운동 기록을 읽고 운동량·패턴·다음 운동을 대화로 분석합니다.</div>
+      </div>
+      <span class="coach-status no" id="coachStatus">로그인 필요</span>
+    </div>
+    <div class="chat-chips">
+      <button class="chat-chip" type="button" data-coach-prompt="이번 주 운동량을 내 기록 기준으로 분석해줘.">이번 주 분석</button>
+      <button class="chat-chip" type="button" data-coach-prompt="최근 운동 패턴에서 부족한 부분을 찾아줘.">부족한 점</button>
+      <button class="chat-chip" type="button" data-coach-prompt="내 기록을 보고 다음 운동으로 20~30분짜리 루틴을 추천해줘.">다음 운동</button>
+      <button class="chat-chip" type="button" data-coach-prompt="최근 근력운동 기록을 보고 어떻게 점진적으로 늘리면 좋을지 알려줘.">근력 진행</button>
+    </div>
+    <div class="chat-shell" style="margin-top:9px">
+      <div class="chat-messages" id="coachMessages"></div>
+      <div class="chat-compose">
+        <textarea id="coachInput" rows="2" maxlength="1000" placeholder="예: 오늘 운동을 더 해야 해?"></textarea>
+        <button class="btn chat-send" type="button" id="coachSend">전송</button>
+      </div>
+    </div>
+    <div class="help">GPT 코치는 로그인한 계정의 운동 기록만 읽습니다. 대화에서는 기록을 추가하지 않고, 운동 기록 추가는 위의 AI 운동 기록창에서 확인 후 저장합니다.</div>
+  </section>
+
   <section class="card period-card">
     <div class="section-title"><h2>기간별 통계</h2><span class="tiny">저장된 기록 기반</span></div>
     <div class="period-tabs"><button class="period-tab active" data-period="week">주간</button><button class="period-tab" data-period="month">월간</button><button class="period-tab" data-period="year">연간</button></div>
@@ -203,8 +256,8 @@ if(!supabaseClient){
   console.warn('Supabase JS를 불러오지 못했습니다. 로컬 모드로 실행합니다.');
 }
 function setCloudStatus(message,ok=true){const s=$('cloudStatus'),m=$('cloudMessage');if(s){s.textContent=message;s.style.color=ok?'var(--good)':'var(--bad)'}if(m)m.textContent=message}
-function showCloudLoggedIn(){ $('cloudLoggedOut').classList.add('hidden'); $('cloudLoggedIn').classList.remove('hidden'); $('cloudUserEmail').textContent=currentUser?.email||''; }
-function showCloudLoggedOut(){ $('cloudLoggedOut').classList.remove('hidden'); $('cloudLoggedIn').classList.add('hidden'); setCloudStatus('로그인 필요',false); }
+function showCloudLoggedIn(){ $('cloudLoggedOut').classList.add('hidden'); $('cloudLoggedIn').classList.remove('hidden'); $('cloudUserEmail').textContent=currentUser?.email||''; setCoachUi?.(); loadCoachChat?.(); }
+function showCloudLoggedOut(){ $('cloudLoggedOut').classList.remove('hidden'); $('cloudLoggedIn').classList.add('hidden'); setCloudStatus('로그인 필요',false); setCoachUi?.(); loadCoachChat?.(); }
 function dbToRecord(row){return {id:String(row.id),date:row.date,activity:row.activity||'other',intensity:row.intensity||'light',minutes:Number(row.minutes||0),met:row.met!=null?Number(row.met):null,label:row.label||'',pace:row.pace||null,speedKmh:row.speed_kmh!=null?Number(row.speed_kmh):null,note:row.note||'',interval:!!row.interval,segment:row.segment||''}}
 function recordToDb(r){return {id:String(r.id),user_id:currentUser.id,date:r.date,activity:r.activity??null,intensity:r.intensity??null,minutes:Number(r.minutes||0),met:r.met!=null?Number(r.met):null,label:r.label??null,pace:r.pace??null,speed_kmh:r.speedKmh!=null?Number(r.speedKmh):null,note:r.note??null,interval:!!r.interval,segment:r.segment??null}}
 async function cloudUpsert(r){if(!supabaseClient||!currentUser||!r)return true;const {error}=await supabaseClient.from('exercise_records').upsert(recordToDb(r),{onConflict:'id'});if(error){console.error(error);setCloudStatus('서버 저장 실패: '+error.message,false);return false}return true}
@@ -605,6 +658,103 @@ function exportData(){
 function importData(file){
   if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
 }
+
+
+/* =========================================================
+   GPT 운동 코치
+========================================================= */
+const CHAT_KEY_PREFIX='who-exercise-ai-chat-v1-';
+let coachMessages=[];
+let coachBusy=false;
+
+function chatStorageKey(){return CHAT_KEY_PREFIX+(currentUser?.id||'guest')}
+
+function loadCoachChat(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(chatStorageKey())||'[]');
+    coachMessages=Array.isArray(saved)?saved.filter(x=>x&&(x.role==='user'||x.role==='assistant')&&x.content).slice(-12):[];
+  }catch(e){coachMessages=[]}
+  renderCoachChat();
+}
+
+function saveCoachChat(){
+  coachMessages=coachMessages.slice(-12);
+  localStorage.setItem(chatStorageKey(),JSON.stringify(coachMessages));
+}
+
+function renderCoachChat(){
+  const box=$('coachMessages');if(!box)return;
+  if(!coachMessages.length){
+    box.innerHTML='<div class="chat-empty">운동 기록을 바탕으로 질문해보세요.<br>예: 「이번 주 운동량 어때?」 「내일은 뭐 하지?」</div>';
+    return;
+  }
+  box.innerHTML=coachMessages.map(m=>{
+    const role=m.role==='user'?'user':'assistant';
+    return '<div class="chat-msg '+role+'"><div><div class="chat-bubble">'+escapeHtml(m.content)+'</div><div class="chat-meta">'+(role==='user'?'나':'GPT 운동 코치')+'</div></div></div>';
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+function setCoachUi(){
+  const logged=!!currentUser&&!!supabaseClient;
+  const status=$('coachStatus'),send=$('coachSend'),input=$('coachInput');
+  if(status){
+    status.textContent=logged?'내 기록 연결됨':'로그인 필요';
+    status.className='coach-status '+(logged?'ok':'no');
+  }
+  if(send)send.disabled=!logged||coachBusy;
+  if(input)input.placeholder=logged?'예: 이번 주 운동량을 분석해줘.':'로그인하면 내 운동 기록을 읽어 답합니다.';
+  document.querySelectorAll('[data-coach-prompt]').forEach(b=>b.disabled=!logged||coachBusy);
+}
+
+async function sendCoachMessage(prefill){
+  const input=$('coachInput');
+  const text=String(prefill??input?.value??'').trim();
+  if(!text)return;
+  if(!currentUser||!supabaseClient){showToast('GPT 코치는 로그인 후 사용할 수 있습니다.');return}
+  if(coachBusy)return;
+  coachBusy=true;
+  if(input)input.value='';
+  coachMessages.push({role:'user',content:text});
+  saveCoachChat();renderCoachChat();setCoachUi();
+
+  const box=$('coachMessages');
+  const typing=document.createElement('div');
+  typing.className='chat-typing';
+  typing.innerHTML='<span class="typing-dot"></span> GPT가 기록을 보고 있습니다…';
+  box.appendChild(typing);box.scrollTop=box.scrollHeight;
+
+  try{
+    const {data,error}=await supabaseClient.functions.invoke('ai-exercise-parser',{
+      body:{
+        mode:'chat',
+        messages:coachMessages.slice(-10),
+        weeklyGoal:Number(settings.weeklyGoal)||150,
+        today:iso(today())
+      }
+    });
+    if(error)throw error;
+    const reply=String(data?.reply||'').trim();
+    if(!reply)throw new Error('GPT 응답이 비어 있습니다.');
+    coachMessages.push({role:'assistant',content:reply});
+    saveCoachChat();
+  }catch(error){
+    console.error('GPT 코치 실패:',error);
+    coachMessages.push({role:'assistant',content:'GPT 코치와 연결하지 못했습니다. 로그인 상태와 Supabase Edge Function 배포 상태를 확인하세요.'});
+    saveCoachChat();
+    showToast('GPT 코치 연결 실패');
+  }finally{
+    coachBusy=false;
+    renderCoachChat();setCoachUi();
+  }
+}
+
+$('coachSend').addEventListener('click',()=>sendCoachMessage());
+$('coachInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCoachMessage()}
+});
+document.querySelectorAll('[data-coach-prompt]').forEach(b=>b.addEventListener('click',()=>sendCoachMessage(b.dataset.coachPrompt)));
+loadCoachChat();setCoachUi();
 
 async function parseSmartTextWithAI(text){
   if(!currentUser||!supabaseClient)return null;
