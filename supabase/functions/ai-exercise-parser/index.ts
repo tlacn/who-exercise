@@ -1,4 +1,4 @@
-import { withSupabase } from "npm:@supabase/server@0.6.0";
+import { withSupabase } from "jsr:@supabase/server@^1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
