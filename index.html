@@ -13,7 +13,7 @@
 /* forms */
 .add-card{margin-top:14px}.exercise-form{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;align-items:start}.field{min-width:0}.field-action{display:flex;align-items:flex-end}.field-action button{width:100%;height:44px}.field-full{grid-column:1/-1}label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px;line-height:1.3}input,select{display:block;width:100%;max-width:100%;height:44px;padding:0 12px;border-radius:12px;border:1px solid #d9dee8;background:#fff;color:var(--text);outline:none;min-width:0}
 /* iPhone Safari native date control can exceed its grid cell */
-input[type='date']{display:block;width:100%!important;min-width:0!important;max-width:100%!important;height:44px!important;-webkit-appearance:none;appearance:none;font-size:16px;line-height:44px;padding:0 10px!important;overflow:hidden;box-sizing:border-box;font-variant-numeric:tabular-nums}input[type='date']::-webkit-date-and-time-value{min-width:0;width:100%;text-align:left;line-height:42px}input[type='date']::-webkit-calendar-picker-indicator{margin:0 0 0 6px;padding:0;flex:0 0 auto}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}input::placeholder{color:#a3acbb}.pace-row{display:flex;align-items:center;gap:8px;height:44px}.pace-row input{flex:1}.pace-unit{font-size:13px;color:var(--muted);white-space:nowrap}.pace-meta{min-height:18px;display:flex;align-items:center;gap:8px;margin-top:6px}.pace-helper{font-size:11px;color:var(--muted);line-height:1.45}.typing-indicator{display:none;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:#eff6ff;color:var(--accent);font-size:10px;font-weight:800;white-space:nowrap}.typing-indicator.show{display:inline-flex}.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.35)}70%{box-shadow:0 0 0 5px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}.pace-active{border-color:var(--accent)!important;box-shadow:0 0 0 4px rgba(37,99,235,.13)!important}.pace-has-value{border-color:#7da1f8}.result{margin-top:13px;padding:12px 13px;border-radius:13px;background:#f7f9fc;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.result .big{font-weight:800;line-height:1.45}.badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:850;white-space:nowrap}.badge.mod{background:#eff6ff;color:#1d4ed8}.badge.vig{background:#f5f3ff;color:#6d28d9}.badge.light{background:#f1f5f9;color:#64748b}.badge.uncertain{background:#fff7ed;color:var(--warn)}.help{font-size:11px;color:var(--muted);line-height:1.55;margin-top:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{min-height:44px;padding:0 15px;border:0;border-radius:12px;background:var(--text);color:#fff;font-weight:800}.btn.secondary{background:#eef2f7;color:var(--text)}.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}.btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}.btn.small{min-height:34px;height:34px;padding:0 10px;border-radius:9px;font-size:11px}.btn:disabled{opacity:.5;cursor:not-allowed}.input-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
+input[type='date']{display:block;width:100%!important;min-width:0!important;max-width:100%!important;-webkit-appearance:none;appearance:none;font-size:16px;line-height:44px;padding:0 12px!important;overflow:hidden}input[type='date']::-webkit-date-and-time-value{min-width:0;text-align:left}input[type='date']::-webkit-calendar-picker-indicator{margin:0 0 0 auto}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}input::placeholder{color:#a3acbb}.pace-row{display:flex;align-items:center;gap:8px;height:44px}.pace-row input{flex:1}.pace-unit{font-size:13px;color:var(--muted);white-space:nowrap}.pace-meta{min-height:18px;display:flex;align-items:center;gap:8px;margin-top:6px}.pace-helper{font-size:11px;color:var(--muted);line-height:1.45}.typing-indicator{display:none;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:#eff6ff;color:var(--accent);font-size:10px;font-weight:800;white-space:nowrap}.typing-indicator.show{display:inline-flex}.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.35)}70%{box-shadow:0 0 0 5px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}.pace-active{border-color:var(--accent)!important;box-shadow:0 0 0 4px rgba(37,99,235,.13)!important}.pace-has-value{border-color:#7da1f8}.result{margin-top:13px;padding:12px 13px;border-radius:13px;background:#f7f9fc;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.result .big{font-weight:800;line-height:1.45}.badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:850;white-space:nowrap}.badge.mod{background:#eff6ff;color:#1d4ed8}.badge.vig{background:#f5f3ff;color:#6d28d9}.badge.light{background:#f1f5f9;color:#64748b}.badge.uncertain{background:#fff7ed;color:var(--warn)}.help{font-size:11px;color:var(--muted);line-height:1.55;margin-top:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{min-height:44px;padding:0 15px;border:0;border-radius:12px;background:var(--text);color:#fff;font-weight:800}.btn.secondary{background:#eef2f7;color:var(--text)}.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}.btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}.btn.small{min-height:34px;height:34px;padding:0 10px;border-radius:9px;font-size:11px}.btn:disabled{opacity:.5;cursor:not-allowed}.input-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
 /* 생활활동 */
 .activity-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
 .quick-preset{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
@@ -147,55 +147,30 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 /* =========================================================
    저장 / 데이터
 ========================================================= */
-const KEY='who-exercise-records-v5';
-const LEGACY_KEYS=['who-exercise-records-v4','who-exercise-records-v3','who-exercise-records-v2','who-exercise-records-v1'];
+const KEY='who-exercise-records-v4';
+const OLD_KEYS=['who-exercise-records-v3','who-exercise-records-v2'];
 const SETTINGS_KEY='who-exercise-settings-v1';
-const BACKUP_KEY='who-exercise-records-safety-backup-v1';
 
 let records=[];
 let settings={weeklyGoal:150};
 
-/* 데이터 보호: 현재 키 하나만 보지 않고 과거 모든 기록 키를 병합합니다.
-   업데이트 때 저장 키가 바뀌어도 기존 기록을 버리지 않습니다. */
-function normalizeRecord(r){
-  if(!r||typeof r!=='object') return null;
-  return {...r,id:r.id??(Date.now()+Math.random()),activity:r.activity||'other'};
-}
-function recordFingerprint(r){
-  return [r.id??'',r.date??'',r.activity??'',r.minutes??'',r.label??'',r.pace??'',r.segment??''].join('|');
-}
-function readRecordArray(key){
-  try{const raw=localStorage.getItem(key);if(!raw)return [];const a=JSON.parse(raw);return Array.isArray(a)?a.map(normalizeRecord).filter(Boolean):[]}catch(e){return []}
-}
-
-const allKeys=[];
 try{
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(k && /^who-exercise-records-v\d+$/.test(k)) allKeys.push(k);
-  }
+  const parsed=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(Array.isArray(parsed)) records=parsed;
 }catch(e){}
-const sourceKeys=[KEY,...LEGACY_KEYS,...allKeys];
-const seenKeys=new Set();
-const merged=[];
-const seenRecords=new Set();
-for(const k of sourceKeys){
-  if(!k||seenKeys.has(k))continue;
-  seenKeys.add(k);
-  for(const r of readRecordArray(k)){
-    const fp=recordFingerprint(r);
-    if(!seenRecords.has(fp)){seenRecords.add(fp);merged.push(r)}
+
+if(!records.length){
+  for(const oldKey of OLD_KEYS){
+    try{
+      const old=JSON.parse(localStorage.getItem(oldKey)||'[]');
+      if(Array.isArray(old)&&old.length){
+        records=old.map(r=>({...r,id:r.id??(Date.now()+Math.random()),activity:r.activity||'other'}));
+        localStorage.setItem(KEY,JSON.stringify(records));
+        break;
+      }
+    }catch(e){}
   }
 }
-records=merged;
-
-/* 시작 시점에 발견한 기록을 안전 백업하고 새 저장 키에도 보존합니다. */
-try{
-  if(records.length){
-    localStorage.setItem(BACKUP_KEY,JSON.stringify(records));
-    localStorage.setItem(KEY,JSON.stringify(records));
-  }
-}catch(e){}
 
 try{
   const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -328,16 +303,7 @@ function updateIntervalPreview(){
 
 function addRecord(obj){records.push({id:Date.now()+Math.random(),...obj});persist()}
 function removeRecord(id){records=records.filter(r=>String(r.id)!==String(id));persist()}
-function persist(){
-  try{
-    /* 덮어쓰기 직전에 이전 정상 데이터도 별도 안전 백업으로 유지 */
-    const previous=localStorage.getItem(KEY);
-    if(previous){const a=JSON.parse(previous);if(Array.isArray(a)&&a.length)localStorage.setItem(BACKUP_KEY,JSON.stringify(a));}
-  }catch(e){}
-  localStorage.setItem(KEY,JSON.stringify(records));
-  try{localStorage.setItem(BACKUP_KEY,JSON.stringify(records))}catch(e){}
-  renderAll();
-}
+function persist(){localStorage.setItem(KEY,JSON.stringify(records));renderAll()}
 function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',interval:'인터벌',housework:'생활활동/집안일',other:'기타'}[a]||a||'기타')}
 function intensityLabel(i){return i==='moderate'?'중강도':i==='vigorous'?'고강도':'저강도'}
 function intensityClass(i){return i==='moderate'?'mod':i==='vigorous'?'vig':'light'}
