@@ -427,6 +427,8 @@ function setupActivity(){
     $('detailWrap').innerHTML=`<label for="houseworkType">활동 내용</label><select id="houseworkType"><option value="mixed">집안 정리·청소 혼합 · 약 3.3 MET</option><option value="moving">매트·가구 이동/정리 · 약 5.0 MET</option><option value="carrying">물건 운반·무거운 정리 · 약 5.8 MET</option><option value="light">가벼운 집안일 · 약 2.5 MET</option></select><div class="activity-note" id="houseworkNote">청소·정리·바닥 작업 등이 섞인 경우</div><div class="quick-preset"><button type="button" data-housework="mixed">혼합 청소</button><button type="button" data-housework="moving">매트/가구 이동</button><button type="button" data-housework="carrying">물건 운반</button></div>`;
     $('houseworkType').addEventListener('change',()=>{ $('houseworkNote').textContent=houseworkProfiles[$('houseworkType').value].note; updateEstimate(); });
     detailWrap.querySelectorAll('[data-housework]').forEach(btn=>btn.addEventListener('click',()=>{ $('houseworkType').value=btn.dataset.housework; $('houseworkNote').textContent=houseworkProfiles[btn.dataset.housework].note; updateEstimate(); detailWrap.querySelectorAll('[data-housework]').forEach(b=>b.classList.toggle('active',b===btn)); }));
+  }else if(activity==='strength'){
+    $('detailWrap').innerHTML='<label for="strengthSets">세트 수 <span class="tiny">선택</span></label><input id="strengthSets" type="number" min="1" step="1" placeholder="3">';
   }else if(activity==='cycle'){
     $('detailWrap').innerHTML='<label for="cycleIntensity">강도</label><select id="cycleIntensity"><option value="easy">가볍게 · 약 4.0 MET</option><option value="mod">중간 · 약 6.8 MET</option><option value="hard">강하게 · 약 9.3 MET</option></select>';
     $('cycleIntensity').addEventListener('change',updateEstimate);
@@ -465,6 +467,11 @@ function clearDraft(){localStorage.removeItem('who-exercise-draft-v1');$('draftN
 function recentActivities(){const seen=new Set(),out=[];[...records].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).forEach(r=>{const key=r.activity+'|'+(r.pace||r.met||'');if(!seen.has(key)&&out.length<5){seen.add(key);out.push(r)}});return out}
 function {const box=$('recentPicks');if(!box)return;const rs=recentActivities();box.innerHTML=rs.length?'<span class="tiny" style="align-self:center">최근 사용</span>'+rs.map(r=>`<button type="button" data-recent="${r.id}">${escapeHtml(r.label||activityName(r.activity))} · ${r.minutes}분</button>`).join(''):''}
 
+function normalizeSmartRecord(r){
+  if(!r||r.activity!=='housework'||!r.note)return r;
+  if(!/스쿼트|런지|푸시업|팔굽혀펴기|플랭크|덤벨|아령|벤치프레스|근력|웨이트|저항운동|풀업|턱걸이/.test(r.note))return r;
+  return {...r,activity:'strength',met:3.5,intensity:classify(3.5).key,label:'근력운동'};
+}
 function normalizePaceRecord(r){
   if(!r||r.interval||!['powerwalk','walk','run','hiking'].includes(r.activity)||!r.pace)return r;
   const e=estimatePace(r.activity,r.pace);
@@ -700,7 +707,7 @@ $('appRefreshBtn').addEventListener('click',()=>{
 /* =========================================================
    전체 렌더
 ========================================================= */
-function renderAll(){renderDashboard();renderPeriod();renderActivityStats();renderRecords();renderRecentPicks()}
+function renderAll(){renderDashboard();renderPeriod();renderActivityStats();renderRecords()}
 $('date').value=iso(today());$('recoveryPace').disabled=true;setupActivity();restoreDraft();const corrected=normalizeStoredRecords();resetSleepUI();renderAll();if(corrected)console.info('기존 페이스 기록 보정:',corrected+'개');
 </script>
 </body>
