@@ -38,11 +38,10 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.2</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.3</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -187,7 +186,15 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_QhyqWAmqAOOhAyK4a8nF1g_r1OJDoyf
 
 const supabaseClient = window.supabase?.createClient ? window.supabase.createClient(
   SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth:{
+      persistSession:true,
+      autoRefreshToken:true,
+      detectSessionInUrl:false,
+      storage:window.localStorage
+    }
+  }
 ) : null;
 
 let currentUser = null;
@@ -205,11 +212,79 @@ async function cloudDelete(id){if(!supabaseClient||!currentUser)return true;cons
 async function loadCloudRecords(){if(!supabaseClient||!currentUser)return;cloudSyncing=true;setCloudStatus('☁️ 서버에서 기록 불러오는 중…');const {data,error}=await supabaseClient.from('exercise_records').select('*').eq('user_id',currentUser.id).order('date',{ascending:false});if(error){console.error(error);cloudSyncing=false;setCloudStatus('서버 불러오기 실패: '+error.message,false);return}const raw=(data||[]).map(dbToRecord);const normalized=raw.map(normalizePaceRecord);const changed=normalized.filter((r,i)=>JSON.stringify(r)!==JSON.stringify(raw[i]));records=normalized;localStorage.setItem(KEY,JSON.stringify(records));if(changed.length){const {error:updateError}=await supabaseClient.from('exercise_records').upsert(changed.map(recordToDb),{onConflict:'id'});if(updateError)console.error('기존 페이스 기록 보정 실패:',updateError)}cloudSyncing=false;renderAll();setCloudStatus(`☁️ 서버 동기화 완료 · ${records.length}개${changed.length?` · 페이스 기록 ${changed.length}개 보정`:''}`)}
 async function uploadAllLocalRecords(showAlert=true){if(!supabaseClient){alert('클라우드 모듈을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.');return}if(!currentUser){if(showAlert)alert('먼저 로그인하세요.');return}if(!records.length){if(showAlert)alert('현재 브라우저에 저장된 기록이 없습니다.');return}cloudSyncing=true;setCloudStatus(`☁️ ${records.length}개 업로드 중…`);const {error}=await supabaseClient.from('exercise_records').upsert(records.map(recordToDb),{onConflict:'id'});cloudSyncing=false;if(error){console.error(error);setCloudStatus('기록 업로드 실패: '+error.message,false);if(showAlert)alert('서버 업로드 실패\n\n'+error.message);return}await loadCloudRecords();if(showAlert)alert('현재 브라우저의 기록을 서버에 저장했습니다.')}
 async function migrateLocalOnLogin(){if(!supabaseClient||!currentUser)return;const local=[...records];const {data,error}=await supabaseClient.from('exercise_records').select('id').eq('user_id',currentUser.id);if(error){setCloudStatus('서버 확인 실패: '+error.message,false);return}const ids=new Set((data||[]).map(x=>String(x.id)));const only=local.filter(r=>!ids.has(String(r.id)));if(only.length){cloudSyncing=true;setCloudStatus(`☁️ 기존 브라우저 기록 ${only.length}개 이전 중…`);const {error:e}=await supabaseClient.from('exercise_records').upsert(only.map(recordToDb),{onConflict:'id'});if(e){console.error(e);setCloudStatus('기존 기록 이전 실패: '+e.message,false);cloudSyncing=false;return}}await loadCloudRecords()}
-async function signIn(){if(!supabaseClient){alert('클라우드 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.');return}const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password){alert('이메일과 비밀번호를 입력하세요.');return}const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){alert('로그인 실패\n\n'+error.message);return}currentUser=data.user;showCloudLoggedIn();await migrateLocalOnLogin()}
-async function signOut(){if(!supabaseClient)return;await supabaseClient.auth.signOut();currentUser=null;showCloudLoggedOut()}
-$('signInBtn').addEventListener('click',signIn);$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});$('syncBtn').addEventListener('click',loadCloudRecords);$('uploadLocalBtn').addEventListener('click',()=>uploadAllLocalRecords(true));$('signOutBtn').addEventListener('click',signOut);
-(async()=>{if(!supabaseClient){setCloudStatus('클라우드 모듈 로드 실패 · 로컬 기록 사용',false);return}const {data,error}=await supabaseClient.auth.getSession();if(error){setCloudStatus('로그인 상태 확인 실패',false);return}if(data?.session?.user){currentUser=data.session.user;showCloudLoggedIn();await migrateLocalOnLogin()}else showCloudLoggedOut()})();
-if(supabaseClient) supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){currentUser=null;showCloudLoggedOut()}else if(event==='SIGNED_IN'&&session?.user){currentUser=session.user;showCloudLoggedIn();window.setTimeout(()=>migrateLocalOnLogin(),0)}});
+async function signIn(){
+  if(!supabaseClient){alert('클라우드 모듈을 불러오지 못했습니다. 앱을 다시 열어주세요.');return}
+  const email=$('authEmail').value.trim(),password=$('authPassword').value;
+  if(!email||!password){alert('이메일과 비밀번호를 입력하세요.');return}
+  const btn=$('signInBtn');
+  btn.disabled=true;btn.textContent='로그인 중…';setCloudStatus('로그인 확인 중…');
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=data?.user||null;
+    if(!currentUser)throw new Error('로그인 세션을 확인하지 못했습니다.');
+    showCloudLoggedIn();
+    await migrateLocalOnLogin();
+    setCloudStatus('☁️ 자동 로그인 상태로 저장됨');
+  }catch(error){
+    console.error('로그인 실패:',error);
+    setCloudStatus('로그인 실패',false);
+    alert('로그인 실패\\n\\n'+(error?.message||'알 수 없는 오류'));
+  }finally{
+    btn.disabled=false;btn.textContent='로그인';
+  }
+}
+async function signOut(){
+  if(!supabaseClient)return;
+  await supabaseClient.auth.signOut();
+  currentUser=null;
+  showCloudLoggedOut();
+}
+$('signInBtn').addEventListener('click',signIn);
+$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
+$('syncBtn').addEventListener('click',loadCloudRecords);
+$('uploadLocalBtn').addEventListener('click',()=>uploadAllLocalRecords(true));
+$('signOutBtn').addEventListener('click',signOut);
+
+let authInitializing=true;
+async function initAuth(){
+  if(!supabaseClient){
+    setCloudStatus('클라우드 모듈 로드 실패 · 로컬 기록 사용',false);
+    authInitializing=false;
+    return;
+  }
+  setCloudStatus('자동 로그인 확인 중…');
+  try{
+    const {data,error}=await supabaseClient.auth.getSession();
+    if(error)throw error;
+    const session=data?.session;
+    if(session?.user){
+      currentUser=session.user;
+      showCloudLoggedIn();
+      await migrateLocalOnLogin();
+      setCloudStatus('☁️ 자동 로그인됨 · '+(currentUser.email||''));
+    }else{
+      showCloudLoggedOut();
+    }
+  }catch(error){
+    console.error('자동 로그인 확인 실패:',error);
+    setCloudStatus('로그인 상태 확인 실패 · 다시 로그인하세요',false);
+    showCloudLoggedOut();
+  }finally{
+    authInitializing=false;
+  }
+}
+if(supabaseClient) supabaseClient.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_OUT'){
+    currentUser=null;
+    showCloudLoggedOut();
+  }else if((event==='SIGNED_IN'||event==='TOKEN_REFRESHED'||event==='INITIAL_SESSION')&&session?.user){
+    currentUser=session.user;
+    showCloudLoggedIn();
+    if(event==='SIGNED_IN'&&!authInitializing)window.setTimeout(()=>migrateLocalOnLogin(),0);
+  }
+});
+initAuth();
 
 
 /* =========================================================
