@@ -100,7 +100,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
       <div class="smart-result" id="smartResult"></div>
     </div>
     <form id="form" class="exercise-form">
-      <div class="field"><label for="date">날짜</label><div class="date-row"><input id="date" type="date" required><button class="icon-btn" type="button" id="dateTodayBtn" title="오늘">오늘</button></div><div class="date-quick"><button type="button" data-date-offset="0">오늘</button><button type="button" data-date-offset="-1">어제</button><button type="button" data-date-offset="-2">그제</button></div></div>
+      <div class="field"><label for="date">날짜</label><div class="date-row"><input id="date" type="date" required></div><div class="date-quick"><button type="button" data-date-offset="0">오늘</button><button type="button" data-date-offset="-1">어제</button><button type="button" data-date-offset="-2">그제</button></div></div>
       <div class="field"><label for="activity">운동 종류</label><select id="activity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="strength">근력운동</option><option value="interval">인터벌</option></select></div>
       <div class="field pace-box" id="paceWrap">
         <label for="pace">페이스</label>
@@ -123,7 +123,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <div class="result" id="estimateBox"><div><div class="tiny">자동 추정</div><div class="big" id="estimateText">페이스를 입력하세요</div></div><span class="badge uncertain" id="estimateBadge">대기</span></div>
     <div class="input-note">페이스는 <b>분:초 / km</b>로 입력합니다. 예: <b>08:00</b> → <b>7.5 km/h</b>.</div>
     <div class="help">운동뿐 아니라 청소·정리·매트 이동 같은 생활활동도 기록할 수 있습니다. 생활활동은 2024 Adult Compendium의 유사 가사활동 MET를 참고한 대략적인 값입니다. 강도는 활동 종류와 속도를 바탕으로 한 기록용 추정치이며 실제 강도는 작업량·휴식·환경 등에 따라 달라질 수 있습니다.</div>
-    <div class="actions"><button class="btn secondary" type="button" id="todayBtn">오늘 날짜</button><button class="btn secondary" type="button" id="exportBtn">백업</button><button class="btn secondary" type="button" id="importBtn">복원</button><input id="restoreFile" type="file" accept="application/json,.json" class="hidden"><button class="btn danger" type="button" id="clearBtn">전체 삭제</button></div>
+    <div class="actions"><button class="btn secondary" type="button" id="exportBtn">백업</button><button class="btn secondary" type="button" id="importBtn">복원</button><input id="restoreFile" type="file" accept="application/json,.json" class="hidden"><button class="btn danger" type="button" id="clearBtn">전체 삭제</button></div>
   </section>
 
   <section class="card period-card">
@@ -166,7 +166,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <h3>운동 기록 수정</h3>
     <div class="modal-grid">
       <div><label for="editDate">날짜</label><input id="editDate" type="date"></div>
-      <div><label for="editActivity">운동 종류</label><select id="editActivity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="interval">인터벌</option></select></div>
+      <div><label for="editActivity">운동 종류</label><select id="editActivity"><option value="powerwalk">파워워킹</option><option value="walk">걷기</option><option value="run">러닝</option><option value="stairs">계단오르기</option><option value="cycle">자전거</option><option value="hiking">등산/오르막 걷기</option><option value="housework">생활활동/집안일</option><option value="strength">근력운동</option><option value="interval">인터벌</option></select></div>
       <div><label for="editMinutes">시간(분)</label><input id="editMinutes" type="number" min="1" step="1"></div>
       <div><label for="editIntensity">강도</label><select id="editIntensity"><option value="moderate">중강도</option><option value="vigorous">고강도</option><option value="light">저강도</option></select></div>
       <div class="field-full"><label for="editPace">페이스(선택)</label><input id="editPace" type="text" inputmode="text" placeholder="08:00"></div>
@@ -209,7 +209,7 @@ function dbToRecord(row){return {id:String(row.id),date:row.date,activity:row.ac
 function recordToDb(r){return {id:String(r.id),user_id:currentUser.id,date:r.date,activity:r.activity??null,intensity:r.intensity??null,minutes:Number(r.minutes||0),met:r.met!=null?Number(r.met):null,label:r.label??null,pace:r.pace??null,speed_kmh:r.speedKmh!=null?Number(r.speedKmh):null,note:r.note??null,interval:!!r.interval,segment:r.segment??null}}
 async function cloudUpsert(r){if(!supabaseClient||!currentUser||!r)return true;const {error}=await supabaseClient.from('exercise_records').upsert(recordToDb(r),{onConflict:'id'});if(error){console.error(error);setCloudStatus('서버 저장 실패: '+error.message,false);return false}return true}
 async function cloudDelete(id){if(!supabaseClient||!currentUser)return true;const {error}=await supabaseClient.from('exercise_records').delete().eq('id',String(id)).eq('user_id',currentUser.id);if(error){console.error(error);setCloudStatus('서버 삭제 실패: '+error.message,false);return false}return true}
-async function loadCloudRecords(){if(!supabaseClient||!currentUser)return;cloudSyncing=true;setCloudStatus('☁️ 서버에서 기록 불러오는 중…');const {data,error}=await supabaseClient.from('exercise_records').select('*').eq('user_id',currentUser.id).order('date',{ascending:false});if(error){console.error(error);cloudSyncing=false;setCloudStatus('서버 불러오기 실패: '+error.message,false);return}const raw=(data||[]).map(dbToRecord);const normalized=raw.map(normalizePaceRecord);const changed=normalized.filter((r,i)=>JSON.stringify(r)!==JSON.stringify(raw[i]));records=normalized;localStorage.setItem(KEY,JSON.stringify(records));if(changed.length){const {error:updateError}=await supabaseClient.from('exercise_records').upsert(changed.map(recordToDb),{onConflict:'id'});if(updateError)console.error('기존 페이스 기록 보정 실패:',updateError)}cloudSyncing=false;renderAll();setCloudStatus(`☁️ 서버 동기화 완료 · ${records.length}개${changed.length?` · 페이스 기록 ${changed.length}개 보정`:''}`)}
+async function loadCloudRecords(){if(!supabaseClient||!currentUser)return;cloudSyncing=true;setCloudStatus('☁️ 서버에서 기록 불러오는 중…');const {data,error}=await supabaseClient.from('exercise_records').select('*').eq('user_id',currentUser.id).order('date',{ascending:false});if(error){console.error(error);cloudSyncing=false;setCloudStatus('서버 불러오기 실패: '+error.message,false);return}const raw=(data||[]).map(dbToRecord);const normalized=raw.map(r=>normalizePaceRecord(normalizeSmartRecord(r)));const changed=normalized.filter((r,i)=>JSON.stringify(r)!==JSON.stringify(raw[i]));records=normalized;localStorage.setItem(KEY,JSON.stringify(records));if(changed.length){const {error:updateError}=await supabaseClient.from('exercise_records').upsert(changed.map(recordToDb),{onConflict:'id'});if(updateError)console.error('기존 페이스 기록 보정 실패:',updateError)}cloudSyncing=false;renderAll();setCloudStatus(`☁️ 서버 동기화 완료 · ${records.length}개${changed.length?` · 페이스 기록 ${changed.length}개 보정`:''}`)}
 async function uploadAllLocalRecords(showAlert=true){if(!supabaseClient){alert('클라우드 모듈을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.');return}if(!currentUser){if(showAlert)alert('먼저 로그인하세요.');return}if(!records.length){if(showAlert)alert('현재 브라우저에 저장된 기록이 없습니다.');return}cloudSyncing=true;setCloudStatus(`☁️ ${records.length}개 업로드 중…`);const {error}=await supabaseClient.from('exercise_records').upsert(records.map(recordToDb),{onConflict:'id'});cloudSyncing=false;if(error){console.error(error);setCloudStatus('기록 업로드 실패: '+error.message,false);if(showAlert)alert('서버 업로드 실패\n\n'+error.message);return}await loadCloudRecords();if(showAlert)alert('현재 브라우저의 기록을 서버에 저장했습니다.')}
 async function migrateLocalOnLogin(){if(!supabaseClient||!currentUser)return;const local=[...records];const {data,error}=await supabaseClient.from('exercise_records').select('id').eq('user_id',currentUser.id);if(error){setCloudStatus('서버 확인 실패: '+error.message,false);return}const ids=new Set((data||[]).map(x=>String(x.id)));const only=local.filter(r=>!ids.has(String(r.id)));if(only.length){cloudSyncing=true;setCloudStatus(`☁️ 기존 브라우저 기록 ${only.length}개 이전 중…`);const {error:e}=await supabaseClient.from('exercise_records').upsert(only.map(recordToDb),{onConflict:'id'});if(e){console.error(e);setCloudStatus('기존 기록 이전 실패: '+e.message,false);cloudSyncing=false;return}}await loadCloudRecords()}
 async function signIn(){
@@ -465,7 +465,6 @@ function setDraft(){const data={date:$('date')?.value,activity:$('activity')?.va
 function restoreDraft(){try{const d=JSON.parse(localStorage.getItem('who-exercise-draft-v1')||'null');if(!d)return;if(d.date)$('date').value=d.date;if(d.activity)$('activity').value=d.activity;setupActivity();if(d.pace)$('pace').value=d.pace;if(d.minutes)$('minutes').value=d.minutes;if(d.note)$('recordNote').value=d.note;updateEstimate();$('draftNote').textContent='이전 입력을 복원했습니다.'}catch(e){}}
 function clearDraft(){localStorage.removeItem('who-exercise-draft-v1');$('draftNote').textContent='기록 완료 · 입력칸을 비웠습니다.'}
 function recentActivities(){const seen=new Set(),out=[];[...records].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).forEach(r=>{const key=r.activity+'|'+(r.pace||r.met||'');if(!seen.has(key)&&out.length<5){seen.add(key);out.push(r)}});return out}
-function {const box=$('recentPicks');if(!box)return;const rs=recentActivities();box.innerHTML=rs.length?'<span class="tiny" style="align-self:center">최근 사용</span>'+rs.map(r=>`<button type="button" data-recent="${r.id}">${escapeHtml(r.label||activityName(r.activity))} · ${r.minutes}분</button>`).join(''):''}
 
 function normalizeSmartRecord(r){
   if(!r||r.activity!=='housework'||!r.note)return r;
@@ -621,7 +620,7 @@ function parseSmartText(text){
   const dm=raw.match(/(?:약\s*)?(\d+(?:\.\d+)?)\s*(시간|분)/);let minutes=dm?(dm[2]==='시간'?Number(dm[1])*60:Number(dm[1])):null;
   let activity='housework', sub='mixed';
   if(/스쿼트|런지|푸시업|팔굽혀펴기|플랭크|덤벨|아령|벤치프레스|근력|웨이트|저항운동|풀업|턱걸이/.test(raw))activity='strength';
-  if(/러닝|달리기|조깅|뛰/.test(raw))activity='run';
+  else if(/러닝|달리기|조깅|뛰/.test(raw))activity='run';
   else if(/파워워킹|빠르게 걷/.test(raw))activity='powerwalk';
   else if(/걷기|산책/.test(raw))activity='walk';
   else if(/계단/.test(raw))activity='stairs';
@@ -647,7 +646,6 @@ function repeatRecord(id){const r=records.find(x=>String(x.id)===String(id));if(
 ========================================================= */
 $('activity').addEventListener('change',()=>{setupActivity();setDraft()});
 ['date','pace','minutes','recordNote'].forEach(id=>{const el=$(id);if(el)el.addEventListener('input',setDraft)});
-$('dateTodayBtn').addEventListener('click',()=>{$('date').value=iso(today());setDraft()});
 document.querySelectorAll('[data-date-offset]').forEach(b=>b.addEventListener('click',()=>{$('date').value=iso(addDays(today(),Number(b.dataset.dateOffset)||0));document.querySelectorAll('[data-date-offset]').forEach(x=>x.classList.toggle('active',x===b));setDraft()}));
 $('smartParseBtn').addEventListener('click',()=>applySmart($('smartInput').value));
 $('smartInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applySmart(e.currentTarget.value)}});
@@ -662,12 +660,12 @@ $('form').addEventListener('submit',ev=>{
   if(activity==='interval'){
     const base=$('intervalBase').value,fastMin=Number($('fastMinutes').value)||0,recMin=Number($('recoveryMinutes').value)||0,f=estimatePace(base,$('fastPace').value);let recoveryRaw=$('recoveryPace').value;if($('recoveryPreset').value==='auto'&&f)recoveryRaw=formatPaceInput(f.sec+120);const r=estimatePace(base,recoveryRaw);if(fastMin+recMin<1||(!f&&fastMin>0)||(!r&&recMin>0)){alert('인터벌의 페이스와 시간을 확인하세요.');return}if(f&&fastMin>0)addRecord({date,intensity:f.key,minutes:fastMin,met:f.met,label:`${paceProfiles[base].name} · 빠른 구간`,activity:'interval',interval:true,segment:'빠른 구간',pace:paceText(f.sec),speedKmh:f.speed,note:$('recordNote').value.trim()});if(r&&recMin>0)addRecord({date,intensity:r.key,minutes:recMin,met:r.met,label:`${paceProfiles[base].name} · 회복 구간`,activity:'interval',interval:true,segment:'회복 구간',pace:paceText(r.sec),speedKmh:r.speed,note:$('recordNote').value.trim()});$('fastMinutes').value='';$('recoveryMinutes').value='';$('fastPace').value='';$('recoveryPace').value='';return;
   }
-  const minutes=Number($('minutes').value);if(!minutes||minutes<1)return;let e,label,pace=null,speedKmh=null,met;
+  const minutes=Number($('minutes').value);if(!minutes||minutes<1)return;const sets=activity==='strength'?(Number($('strengthSets')?.value)||null):null;let e,label,pace=null,speedKmh=null,met;
   if(['powerwalk','walk','run','hiking'].includes(activity)){e=estimatePace(activity,$('pace').value);if(!e){alert('페이스를 MM:SS 형식으로 입력하세요. 예: 08:00');$('pace').focus();return}pace=paceText(e.sec);speedKmh=e.speed;met=e.met;label=`${paceProfiles[activity].name} · ${pace}`}
   else{const d=getManualDetail(activity);if(!d){alert('운동 종류의 세부 정보를 확인하세요.');return}const c=classify(d.met);e={...c,met:d.met};met=d.met;label=d.label}
-  addRecord({date,intensity:e.key,minutes,met,label,activity,pace,speedKmh,note:$('recordNote').value.trim()});$('minutes').value='';$('recordNote').value='';$('smartInput').value='';$('smartResult').classList.remove('show');clearDraft();showToast('기록을 추가했습니다.');
+  addRecord({date,intensity:e.key,minutes,met,label:sets?`${label} · ${sets}세트`:label,activity,pace,speedKmh,sets,note:$('recordNote').value.trim()});$('minutes').value='';$('recordNote').value='';$('smartInput').value='';$('smartResult').classList.remove('show');clearDraft();showToast('기록을 추가했습니다.');
 });
-$('todayBtn').addEventListener('click',()=>{$('date').value=iso(today())});$('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',()=>{$('restoreFile').click()});$('restoreFile').addEventListener('change',e=>importData(e.target.files[0]));$('clearBtn').addEventListener('click',async()=>{if(confirm('저장된 운동 기록을 모두 삭제할까요?')){const ids=records.map(r=>r.id);records=[];persist();renderAll();if(currentUser&&!cloudSyncing){for(const id of ids)await cloudDelete(id)}}});
+$('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',()=>{$('restoreFile').click()});$('restoreFile').addEventListener('change',e=>importData(e.target.files[0]));$('clearBtn').addEventListener('click',async()=>{if(confirm('저장된 운동 기록을 모두 삭제할까요?')){const ids=records.map(r=>r.id);records=[];persist();renderAll();if(currentUser&&!cloudSyncing){for(const id of ids)await cloudDelete(id)}}});
 
 /* period events */
 document.querySelectorAll('.period-tab').forEach(btn=>btn.addEventListener('click',()=>{periodType=btn.dataset.period;setPeriodAnchorToCurrent();document.querySelectorAll('.period-tab').forEach(x=>x.classList.toggle('active',x===btn));renderAll()}));$('prevPeriod').addEventListener('click',()=>shiftPeriod(-1));$('nextPeriod').addEventListener('click',()=>shiftPeriod(1));$('currentPeriod').addEventListener('click',()=>{setPeriodAnchorToCurrent();renderAll()});
