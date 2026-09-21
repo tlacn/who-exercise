@@ -36,6 +36,8 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 @media(max-width:760px){.dashboard{grid-template-columns:1fr}.extra-grid{grid-template-columns:1fr}.period-stats{grid-template-columns:repeat(2,1fr)}.record-toolbar{grid-template-columns:1fr 1fr}.goal-box{grid-template-columns:1fr 1fr}.goal-box .goal-wide{grid-column:1/-1}.year-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:560px){.wrap{padding:18px 10px 36px}.card{padding:15px}.exercise-form{grid-template-columns:1fr}.field-full{grid-column:auto}.compact,.interval-grid{grid-template-columns:1fr}.period-nav{grid-template-columns:40px minmax(0,1fr) 40px}.current-btn{grid-column:1/-1;justify-self:center;margin-top:4px}.period-title{font-size:16px}.year-grid{grid-template-columns:repeat(2,1fr)}.month-cell{min-height:51px}.record-row{align-items:flex-start}.record-actions{flex-direction:column}.goal-box{grid-template-columns:1fr}.goal-box .goal-wide{grid-column:auto}.dashboard-side{grid-template-columns:1fr 1fr}.score .num{font-size:45px}}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="wrap">
@@ -154,6 +156,16 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 
 <script>
 'use strict';
+
+  const SUPABASE_URL = 'https://qrikwaffvunhyvfoeclv.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_QhyqWAmqAOOhAyK4a8nF1g_r1OJDoyf';
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+let currentUser = null;
 
 /* =========================================================
    저장 / 데이터
