@@ -451,7 +451,7 @@ function updateIntervalPreview(){
   else{$('estimateText').textContent='빠른 구간 페이스를 입력하세요';$('estimateBadge').textContent='대기';$('estimateBadge').className='badge uncertain'}
 }
 
-async async function addRecord(obj){const r={id:Date.now()+Math.random(),...obj};records.push(r);persist();if(currentUser&&!cloudSyncing)await cloudUpsert(r);}
+async function addRecord(obj){const r={id:Date.now()+Math.random(),...obj};records.push(r);persist();if(currentUser&&!cloudSyncing)await cloudUpsert(r);}
 async function removeRecord(id){records=records.filter(r=>String(r.id)!==String(id));persist();if(currentUser&&!cloudSyncing)await cloudDelete(id)}
 function persist(){localStorage.setItem(KEY,JSON.stringify(records));renderAll()}
 function activityName(a){return paceProfiles[a]?.name||({stairs:'계단오르기',cycle:'자전거',interval:'인터벌',housework:'생활활동/집안일',other:'기타'}[a]||a||'기타')}
