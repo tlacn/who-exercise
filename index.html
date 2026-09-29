@@ -393,7 +393,7 @@ if(!records.length){
 try{
   const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
   if(s&&typeof s==='object') settings={...settings,...s};
-}
+}catch(e){}
 
 /* =========================================================
    약 · 영양제 복용 기록
