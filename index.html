@@ -20,6 +20,38 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 .quick-preset button{min-height:32px;height:32px;padding:0 9px;border-radius:9px;font-size:10px;background:#f1f5f9;color:var(--text);border:1px solid var(--line);font-weight:800}
 .quick-preset button.active{background:#eff6ff;color:#1d4ed8;border-color:#9bb8ff}
 
+/* 복약 / 영양제 */
+.meds-card{margin-top:14px}
+.meds-date-row{display:flex;gap:8px;align-items:end}
+.meds-date-row>div{flex:1}
+.meds-quick{display:flex;gap:5px;margin-top:6px}
+.meds-quick button{height:27px;padding:0 8px;border:1px solid var(--line);background:#f8fafc;border-radius:8px;font-size:10px;font-weight:800;color:var(--muted)}
+.meds-add{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px;margin-top:12px}
+.meds-list{display:grid;gap:8px;margin-top:12px}
+.med-item{border:1px solid var(--line);border-radius:14px;padding:11px;background:#fbfcfe}
+.med-main{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.med-name{font-size:13px;font-weight:850;min-width:0;word-break:break-word}
+.med-type{font-size:10px;color:var(--muted);margin-top:3px}
+.med-actions{display:flex;gap:6px;flex-shrink:0}
+.med-status{min-width:70px;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line);font-size:11px;font-weight:850;background:#fff}
+.med-status.taken{background:#ecfdf3;color:#15803d;border-color:#bbf7d0}
+.med-status.missed{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+.med-delete{height:34px;padding:0 9px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:10px;font-weight:800}
+.med-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.med-stat{border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.med-stat span{display:block;font-size:10px;color:var(--muted)}
+.med-stat b{display:block;font-size:16px;margin-top:3px}
+.med-week{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.med-week-title{font-size:11px;font-weight:850;margin-bottom:8px}
+.med-week-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0}
+.med-week-name{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.med-week-dots{display:flex;gap:4px}
+.med-dot{width:18px;height:18px;border-radius:6px;background:#eef2f7;border:1px solid var(--line);font-size:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.med-dot.taken{background:#dcfce7;border-color:#86efac;color:#166534}
+.med-dot.missed{background:#ffe4e6;border-color:#fda4af;color:#be123c}
+.med-empty{padding:18px 0;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:560px){.meds-add{grid-template-columns:1fr 1fr}.meds-add button{grid-column:1/-1}.med-summary{grid-template-columns:1fr 1fr}.med-summary .med-stat:last-child{grid-column:1/-1}.med-main{align-items:flex-start}.med-actions{flex-wrap:wrap}.med-status{min-width:64px}}
+
 /* interval */
 .interval-box{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfcfe}.interval-box.show{display:block}.compact,.interval-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.interval-title{font-size:12px;font-weight:850;margin-bottom:10px}.interval-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
 /* period */
@@ -42,7 +74,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.13</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.14</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -127,6 +159,47 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
     <div class="actions"><button class="btn secondary" type="button" id="exportBtn">백업</button><button class="btn secondary" type="button" id="importBtn">복원</button><input id="restoreFile" type="file" accept="application/json,.json" class="hidden"><button class="btn danger" type="button" id="clearBtn">전체 삭제</button></div>
   </section>
 
+
+  <section class="card meds-card">
+    <div class="section-title">
+      <div>
+        <h2>💊 약 · 영양제 복용 기록</h2>
+        <div class="mini">등록한 항목별로 날짜마다 「먹음 / 안 먹음」을 기록합니다.</div>
+      </div>
+      <span class="tiny">이 기기에 저장</span>
+    </div>
+
+    <div class="meds-date-row">
+      <div>
+        <label for="medDate">기록 날짜</label>
+        <input id="medDate" type="date">
+        <div class="meds-quick">
+          <button type="button" data-med-date-offset="0">오늘</button>
+          <button type="button" data-med-date-offset="-1">어제</button>
+          <button type="button" data-med-date-offset="-2">그제</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="meds-add">
+      <input id="medNameInput" type="text" maxlength="40" placeholder="약/영양제 이름 · 예: 비타민D">
+      <select id="medTypeInput">
+        <option value="medicine">약</option>
+        <option value="supplement">영양제</option>
+      </select>
+      <button class="btn" type="button" id="addMedBtn">항목 추가</button>
+    </div>
+
+    <div class="meds-list" id="medsList"></div>
+    <div class="med-summary">
+      <div class="med-stat"><span>먹음</span><b id="medTakenCount">0개</b></div>
+      <div class="med-stat"><span>안 먹음</span><b id="medMissedCount">0개</b></div>
+      <div class="med-stat"><span>미기록</span><b id="medUnsetCount">0개</b></div>
+    </div>
+    <div class="med-week" id="medWeek"></div>
+
+    <div class="help">복용 기록은 현재 브라우저의 저장공간에 별도로 저장됩니다. 운동 기록의 클라우드 동기화와는 독립적으로 동작합니다.</div>
+  </section>
 
   <section class="card period-card">
     <div class="section-title"><h2>기간별 통계</h2><span class="tiny">저장된 기록 기반</span></div>
@@ -320,7 +393,117 @@ if(!records.length){
 try{
   const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
   if(s&&typeof s==='object') settings={...settings,...s};
+}
+
+/* =========================================================
+   약 · 영양제 복용 기록
+========================================================= */
+const MED_ITEMS_KEY='who-exercise-med-items-v1';
+const MED_LOGS_KEY='who-exercise-med-logs-v1';
+let medItems=[];
+let medLogs={};
+
+try{
+  const saved=JSON.parse(localStorage.getItem(MED_ITEMS_KEY)||'[]');
+  if(Array.isArray(saved))medItems=saved;
 }catch(e){}
+try{
+  const saved=JSON.parse(localStorage.getItem(MED_LOGS_KEY)||'{}');
+  if(saved&&typeof saved==='object')medLogs=saved;
+}catch(e){}
+
+function saveMedData(){
+  localStorage.setItem(MED_ITEMS_KEY,JSON.stringify(medItems));
+  localStorage.setItem(MED_LOGS_KEY,JSON.stringify(medLogs));
+}
+
+function medLogForDate(date){
+  if(!medLogs[date])medLogs[date]={};
+  return medLogs[date];
+}
+
+function renderMeds(){
+  const date=$('medDate')?.value||iso(today());
+  const list=$('medsList'),logs=medLogForDate(date);
+  if(!list)return;
+
+  if(!medItems.length){
+    list.innerHTML='<div class="med-empty">아직 등록된 약/영양제가 없습니다.<br>위에서 항목을 추가하세요.</div>';
+  }else{
+    list.innerHTML=medItems.map(function(item){
+      const status=logs[item.id]||'';
+      return '<div class="med-item">'+
+        '<div class="med-main"><div style="min-width:0"><div class="med-name">'+escapeHtml(item.name)+'</div><div class="med-type">'+(item.type==='medicine'?'약':'영양제')+'</div></div>'+
+        '<div class="med-actions">'+
+        '<button class="med-status '+(status==='taken'?'taken':'')+'" type="button" data-med-status="'+item.id+'" data-status="taken">먹음</button>'+
+        '<button class="med-status '+(status==='missed'?'missed':'')+'" type="button" data-med-status="'+item.id+'" data-status="missed">안 먹음</button>'+
+        '<button class="med-delete" type="button" data-med-delete="'+item.id+'">삭제</button>'+
+        '</div></div>'+
+        '</div>';
+    }).join('');
+  }
+
+  const taken=medItems.filter(function(x){return logs[x.id]==='taken'}).length;
+  const missed=medItems.filter(function(x){return logs[x.id]==='missed'}).length;
+  $('medTakenCount').textContent=taken+'개';
+  $('medMissedCount').textContent=missed+'개';
+  $('medUnsetCount').textContent=Math.max(0,medItems.length-taken-missed)+'개';
+
+  renderMedWeek();
+}
+
+function renderMedWeek(){
+  const box=$('medWeek');if(!box||!medItems.length){if(box)box.innerHTML='';return}
+  const base=$('medDate')?.value||iso(today());
+  const d=new Date(base+'T00:00:00');
+  const days=[];
+  for(let i=6;i>=0;i--){const x=addDays(d,-i);days.push({date:iso(x),label:String(x.getMonth()+1)+'/'+String(x.getDate())})}
+  box.innerHTML='<div class="med-week-title">최근 7일 복용 현황</div>'+
+    medItems.map(function(item){
+      const dots=days.map(function(day){
+        const s=medLogs[day.date]?.[item.id]||'';
+        const mark=s==='taken'?'✓':s==='missed'?'×':'·';
+        return '<span class="med-dot '+s+'" title="'+day.date+'">'+mark+'</span>';
+      }).join('');
+      return '<div class="med-week-row"><span class="med-week-name">'+escapeHtml(item.name)+'</span><div class="med-week-dots">'+dots+'</div></div>';
+    }).join('')+
+    '<div class="tiny" style="margin-top:6px">최근 7일: ✓ 먹음 · × 안 먹음 · · 미기록</div>';
+}
+
+function addMedItem(){
+  const input=$('medNameInput'),name=input.value.trim(),type=$('medTypeInput').value;
+  if(!name){input.focus();return}
+  if(medItems.some(function(x){return x.name===name&&x.type===type})){alert('같은 이름의 항목이 이미 있습니다.');return}
+  medItems.push({id:String(Date.now()+Math.random()),name,type});
+  saveMedData();
+  input.value='';
+  renderMeds();
+}
+
+function setMedStatus(id,status){
+  const date=$('medDate').value||iso(today());
+  if(!medItems.some(function(x){return x.id===id}))return;
+  const logs=medLogForDate(date);
+  logs[id]=logs[id]===status?'':status;
+  if(!Object.keys(logs).length)delete medLogs[date];
+  saveMedData();
+  renderMeds();
+}
+
+function deleteMedItem(id){
+  const item=medItems.find(function(x){return x.id===id});if(!item)return;
+  if(!confirm(item.name+' 항목을 삭제할까요?'))return;
+  medItems=medItems.filter(function(x){return x.id!==id});
+  Object.keys(medLogs).forEach(function(date){
+    if(medLogs[date]&&medLogs[date][id]!=null){
+      delete medLogs[date][id];
+      if(!Object.keys(medLogs[date]).length)delete medLogs[date];
+    }
+  });
+  saveMedData();
+  renderMeds();
+}
+
 
 /* =========================================================
    날짜
@@ -602,10 +785,10 @@ async function saveEdit(){
    백업 / 복원
 ========================================================= */
 function exportData(){
-  const payload={version:4,exportedAt:new Date().toISOString(),records,settings};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='who-exercise-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+  const payload={version:5,exportedAt:new Date().toISOString(),records,settings,medItems,medLogs};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='who-exercise-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
 function importData(file){
-  if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
+  if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const incoming=Array.isArray(data)?data:data.records;if(!Array.isArray(incoming))throw new Error('records');if(!confirm(`백업에서 ${incoming.length}개의 기록을 불러올까요? 현재 기록과 교체됩니다.`))return;records=incoming.map(r=>({...r,id:String(r.id??(Date.now()+Math.random()))}));if(data&&data.settings)settings={...settings,...data.settings};if(data&&Array.isArray(data.medItems))medItems=data.medItems;if(data&&data.medLogs&&typeof data.medLogs==='object')medLogs=data.medLogs;localStorage.setItem(KEY,JSON.stringify(records));saveMedData();localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));recordPage=1;renderAll();if(currentUser)await uploadAllLocalRecords(false);alert('복원이 완료되었습니다.')}catch(e){alert('올바른 JSON 백업 파일이 아닙니다.')}};reader.readAsText(file)
 }
 
 
@@ -670,6 +853,25 @@ document.querySelectorAll('.period-tab').forEach(btn=>btn.addEventListener('clic
 /* filters */
 ['recordSearch','recordActivity','recordIntensity','recordSort'].forEach(id=>$(id).addEventListener(id==='recordSearch'?'input':'change',()=>{recordPage=1;renderRecords()}));
 $('records').addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]'),rep=e.target.closest('[data-repeat]');if(rep)repeatRecord(rep.dataset.repeat);if(edit)openEdit(edit.dataset.edit);if(del){const r=records.find(x=>String(x.id)===String(del.dataset.delete));if(r&&confirm(`${fmtDate(r.date)} ${r.label||activityName(r.activity)} 기록을 삭제할까요?`))removeRecord(r.id)}});$('pagination').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(!b)return;recordPage=Math.max(1,Number(b.dataset.page)||1);renderRecords()});
+
+/* 약 · 영양제 */
+$('medDate').value=iso(today());
+$('addMedBtn').addEventListener('click',addMedItem);
+$('medNameInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();addMedItem()}});
+$('medDate').addEventListener('change',renderMeds);
+document.querySelectorAll('[data-med-date-offset]').forEach(function(b){
+  b.addEventListener('click',function(){
+    $('medDate').value=iso(addDays(today(),Number(b.dataset.medDateOffset)||0));
+    renderMeds();
+  });
+});
+$('medsList').addEventListener('click',function(e){
+  const status=e.target.closest('[data-med-status]');
+  const del=e.target.closest('[data-med-delete]');
+  if(status)setMedStatus(status.dataset.medStatus,status.dataset.status);
+  if(del)deleteMedItem(del.dataset.medDelete);
+});
+renderMeds();
 
 /* goal */
 $('saveGoalBtn').addEventListener('click',()=>{const g=Math.max(1,Math.round(Number($('weeklyGoal').value)||150));settings.weeklyGoal=g;localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));renderAll()});
