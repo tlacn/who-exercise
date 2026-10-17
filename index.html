@@ -26,6 +26,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 .meds-date-row>div{flex:1}
 .meds-quick{display:flex;gap:5px;margin-top:6px}
 .meds-quick button{height:27px;padding:0 8px;border:1px solid var(--line);background:#f8fafc;border-radius:8px;font-size:10px;font-weight:800;color:var(--muted)}
+.meds-quick button.active{background:#eff6ff;color:#1d4ed8;border-color:#9bb8ff}
 .meds-add{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px;margin-top:12px}
 .meds-list{display:grid;gap:8px;margin-top:12px}
 .med-item{border:1px solid var(--line);border-radius:14px;padding:11px;background:#fbfcfe}
@@ -37,16 +38,25 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 .med-status.taken{background:#ecfdf3;color:#15803d;border-color:#bbf7d0}
 .med-status.missed{background:#fff1f2;color:#be123c;border-color:#fecdd3}
 .med-delete{height:34px;padding:0 9px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:10px;font-weight:800}
+.med-current{font-size:11px;color:var(--muted);margin-top:5px}
+.med-current b{display:inline-flex;align-items:center;padding:3px 7px;border-radius:7px;font-size:10px;margin-left:3px}
+.med-current .taken{background:#dcfce7;color:#166534}
+.med-current .missed{background:#ffe4e6;color:#9f1239}
+.med-current .unset{background:#eef2f7;color:#475569}
 .med-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .med-stat{border:1px solid var(--line);border-radius:12px;padding:9px 10px}
 .med-stat span{display:block;font-size:10px;color:var(--muted)}
 .med-stat b{display:block;font-size:16px;margin-top:3px}
 .med-week{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
-.med-week-title{font-size:11px;font-weight:850;margin-bottom:8px}
-.med-week-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0}
+.med-week-title{font-size:11px;font-weight:850;margin-bottom:8px;line-height:1.5}
+.med-week-scroll{overflow-x:auto;padding-bottom:4px}
+.med-week-grid{min-width:320px}
+.med-week-axis,.med-week-row{display:grid;grid-template-columns:86px repeat(7,minmax(26px,1fr));gap:4px;align-items:center}
+.med-week-axis{margin-bottom:5px}
+.med-week-day{font-size:9px;text-align:center;color:var(--muted);line-height:1.2;white-space:nowrap}
+.med-week-row{padding:4px 0}
 .med-week-name{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.med-week-dots{display:flex;gap:4px}
-.med-dot{width:18px;height:18px;border-radius:6px;background:#eef2f7;border:1px solid var(--line);font-size:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.med-dot{width:100%;height:28px;border-radius:7px;background:#eef2f7;border:1px solid var(--line);font-size:12px;font-weight:850;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .med-dot.taken{background:#dcfce7;border-color:#86efac;color:#166534}
 .med-dot.missed{background:#ffe4e6;border-color:#fda4af;color:#be123c}
 .med-empty{padding:18px 0;text-align:center;color:var(--muted);font-size:12px}
@@ -74,7 +84,7 @@ input[type='date']{display:block;width:100%!important;min-width:0!important;max-
 </head>
 <body>
 <div class="wrap">
-  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.14</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
+  <div class="app-head"><div><h1>WHO 운동 기록</h1><div class="app-version">버전 <b>2026.09.21.15</b></div></div><button class="btn ghost refresh-app" type="button" id="appRefreshBtn">↻ 앱 새로고침</button></div>
   <div class="sub">워치에 나온 <b>페이스(min/km)</b>를 그대로 입력하면 속도와 MET를 계산하고, 운동 기록을 주간·월간·연간으로 계속 누적 관리합니다.</div>
 
   <section class="card" id="cloudCard" style="margin-top:14px">
@@ -424,6 +434,10 @@ function medLogForDate(date){
 
 function renderMeds(){
   const date=$('medDate')?.value||iso(today());
+  document.querySelectorAll('[data-med-date-offset]').forEach(function(b){
+    const target=iso(addDays(today(),Number(b.dataset.medDateOffset)||0));
+    b.classList.toggle('active',date===target);
+  });
   const list=$('medsList'),logs=medLogForDate(date);
   if(!list)return;
 
@@ -433,10 +447,11 @@ function renderMeds(){
     list.innerHTML=medItems.map(function(item){
       const status=logs[item.id]||'';
       return '<div class="med-item">'+
-        '<div class="med-main"><div style="min-width:0"><div class="med-name">'+escapeHtml(item.name)+'</div><div class="med-type">'+(item.type==='medicine'?'약':'영양제')+'</div></div>'+
+        '<div class="med-main"><div style="min-width:0"><div class="med-name">'+escapeHtml(item.name)+'</div><div class="med-type">'+(item.type==='medicine'?'약':'영양제')+'</div>'+
+        '<div class="med-current">현재 상태: <b class="'+(status==='taken'?'taken':status==='missed'?'missed':'unset')+'">'+(status==='taken'?'✓ 먹음':status==='missed'?'✕ 안 먹음':'미기록')+'</b></div></div>'+
         '<div class="med-actions">'+
-        '<button class="med-status '+(status==='taken'?'taken':'')+'" type="button" data-med-status="'+item.id+'" data-status="taken">먹음</button>'+
-        '<button class="med-status '+(status==='missed'?'missed':'')+'" type="button" data-med-status="'+item.id+'" data-status="missed">안 먹음</button>'+
+        '<button class="med-status '+(status==='taken'?'taken':'')+'" aria-pressed="'+(status==='taken'?'true':'false')+'" type="button" data-med-status="'+item.id+'" data-status="taken">✓ 먹음</button>'+
+        '<button class="med-status '+(status==='missed'?'missed':'')+'" aria-pressed="'+(status==='missed'?'true':'false')+'" type="button" data-med-status="'+item.id+'" data-status="missed">✕ 안 먹음</button>'+
         '<button class="med-delete" type="button" data-med-delete="'+item.id+'">삭제</button>'+
         '</div></div>'+
         '</div>';
@@ -457,17 +472,19 @@ function renderMedWeek(){
   const base=$('medDate')?.value||iso(today());
   const d=new Date(base+'T00:00:00');
   const days=[];
-  for(let i=6;i>=0;i--){const x=addDays(d,-i);days.push({date:iso(x),label:String(x.getMonth()+1)+'/'+String(x.getDate())})}
-  box.innerHTML='<div class="med-week-title">최근 7일 복용 현황</div>'+
+  for(let i=6;i>=0;i--){const x=addDays(d,-i);days.push({date:iso(x),label:String(x.getMonth()+1)+'/'+String(x.getDate()),weekday:['일','월','화','수','목','금','토'][x.getDay()]})}
+  const axis='<div class="med-week-axis"><span></span>'+days.map(function(day){return '<span class="med-week-day">'+day.label+'<br>'+day.weekday+'</span>'}).join('')+'</div>';
+  box.innerHTML='<div class="med-week-title">최근 7일 복용 현황<br><span class="tiny">왼쪽부터 오래된 날짜 → 선택한 날짜 ('+days[0].label+' → '+days[6].label+')</span></div>'+
+    '<div class="med-week-scroll"><div class="med-week-grid">'+axis+
     medItems.map(function(item){
       const dots=days.map(function(day){
         const s=medLogs[day.date]?.[item.id]||'';
         const mark=s==='taken'?'✓':s==='missed'?'×':'·';
-        return '<span class="med-dot '+s+'" title="'+day.date+'">'+mark+'</span>';
+        return '<span class="med-dot '+s+'" title="'+day.date+' · '+(s==='taken'?'먹음':s==='missed'?'안 먹음':'미기록')+'">'+mark+'</span>';
       }).join('');
-      return '<div class="med-week-row"><span class="med-week-name">'+escapeHtml(item.name)+'</span><div class="med-week-dots">'+dots+'</div></div>';
+      return '<div class="med-week-row"><span class="med-week-name" title="'+escapeHtml(item.name)+'">'+escapeHtml(item.name)+'</span>'+dots+'</div>';
     }).join('')+
-    '<div class="tiny" style="margin-top:6px">최근 7일: ✓ 먹음 · × 안 먹음 · · 미기록</div>';
+    '</div></div><div class="tiny" style="margin-top:6px">✓ 먹음 · × 안 먹음 · · 미기록</div>';
 }
 
 function addMedItem(){
@@ -508,7 +525,8 @@ function deleteMedItem(id){
 /* =========================================================
    날짜
 ========================================================= */
-function iso(d){return d.toISOString().slice(0,10)}
+function iso(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function dateFromIso(value){const [y,m,d]=String(value||'').split('-').map(Number);return new Date(y,m-1,d)}
 function today(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
 function monday(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -750,7 +768,7 @@ function getStreakStats(){
   const dates=[...new Set(records.filter(r=>Number(r.minutes)>0).map(r=>r.date))].sort();
   if(!dates.length)return{current:0,best:0};
   const set=new Set(dates);let best=0,run=0,prev=null;
-  for(const d of dates){if(prev&&iso(addDays(new Date(prev),1))===d)run++;else run=1;best=Math.max(best,run);prev=d}
+  for(const d of dates){if(prev&&iso(addDays(dateFromIso(prev),1))===d)run++;else run=1;best=Math.max(best,run);prev=d}
   let current=0,d=today();
   while(set.has(iso(d))){current++;d=addDays(d,-1)}
   if(current===0){d=addDays(today(),-1);while(set.has(iso(d))){current++;d=addDays(d,-1)}}
